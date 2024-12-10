@@ -1,3 +1,6 @@
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 namespace cyclone {
     /**
     * Defines a real number precision. 
@@ -5,4 +8,7 @@ namespace cyclone {
     * By default single precision is provided.
     */
     typedef float real;
+
+    /** Defines the precision of the square root operator. */
+    #define real_sqrt sqrtf
 }
