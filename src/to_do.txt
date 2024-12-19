@@ -1,4 +1,3 @@
 * Add clang-tidy
 * Add consistent formatting rules and apply documentation
 * Configure doxygen or sth else for documentation
-* 
