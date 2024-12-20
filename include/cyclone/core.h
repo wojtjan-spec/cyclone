@@ -70,6 +70,8 @@ class Vector3 {
                            x*vector.y - y*vector.x);
         }
 
+        void clear(); // TODO
+
     private:
         real pad;
     };
