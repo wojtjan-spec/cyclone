@@ -45,3 +45,11 @@ class ParticleGravity : public ParticleForceGenerator {
         ParticleGravity(const Vector3 &gravity);
         virtual void updateForce(Particle *particle, real duration);
 };
+
+class ParticleDrag : public ParticleForceGenerator {
+    real k1; // the velocity drag coefficient
+    real k2; // the velocity squared drag coefficient
+    public:
+        ParticleDrag(real k1, real k2);
+        virtual void updateForce(Particle *particle, real duration);
+};

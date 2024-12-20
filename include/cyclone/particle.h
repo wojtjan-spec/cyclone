@@ -39,6 +39,7 @@ namespace cyclone {
             void addForce(const Vector3 &force);
 
             real getMass(); // TODO
+            real getVelocity(const Vector3 *force); //TODO
 
             bool hasFiniteMass(); // TODO
             bool hasMass(); // TODO
