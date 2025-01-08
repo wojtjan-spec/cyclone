@@ -14,4 +14,7 @@ namespace cyclone {
 
     /** Defines the precision of the power operator. */
     #define real_pow powf
+
+    /** Defines the precision of the absoulte magnitude operator. */
+    #define real_abs fabs
 }

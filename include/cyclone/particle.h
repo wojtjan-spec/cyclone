@@ -43,5 +43,8 @@ namespace cyclone {
 
             bool hasFiniteMass(); // TODO
             bool hasMass(); // TODO
+
+            real getPosition(const Vector3 *force); // TODO
+            Vector3 getPosition(); // TODO
     };
 } // namespace cyclone
