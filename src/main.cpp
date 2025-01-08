@@ -1,16 +1,14 @@
 #include <iostream> 
 
 // TODO -> fix includes (and build) errors
-#include "core.h"
-#include "particle.h"
-#include "pfgen.h"
-#include "precision.h"
+// #include "../include/cyclone/pfgen.h"
 
 int main() {
     std::cout << "Hello world!" << std::endl;
 
-    // one spring
-    cyclone::Particle a, b;
+    // TODO -> look above
+    /* // one spring
+    Particle a, b;
     ParticleForceRegistry registry;
 
     ParticleSpring ps(&b, 1.0f, 2.0f);
@@ -21,7 +19,7 @@ int main() {
     registry.add(&a, &psA);
 
     ParticleSpring psB(&a, 1.0f, 2.0f);
-    registry.add(&b, &psB);
+    registry.add(&b, &psB); */
 
     return 0;
 }
