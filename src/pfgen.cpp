@@ -25,3 +25,17 @@ void ParticleDrag::updateForce(Particle* particle, real duration) {
     force *= -dragCoeff;
     particle->addForce(force);
 }
+
+void ParticleSpring::updateForce(Particle* particle, real duration) {
+    Vector3 force;
+    particle->getPosition(&force);
+    force -= other->getPosition();
+
+    real magnitude = force.magnitude();
+    magnitude = real_abs(magnitude - restLength);
+    magnitude *= springConstant;
+
+    force.normalize();
+    force *= -magnitude;
+    particle->addForce(force);
+}
