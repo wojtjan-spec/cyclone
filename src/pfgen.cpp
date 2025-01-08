@@ -1,6 +1,4 @@
-#include <cyclone/pfgen.h>
-
-using namespace cyclone;
+#include "pfgen.h"
 
 void ParticleForceRegistry::updateForces(real duration) {
     Registry::iterator i = registrations.begin();

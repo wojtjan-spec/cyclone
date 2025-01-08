@@ -1,7 +1,4 @@
-#include <assert.h>
-#include <cyclone/pfgen.h>
-
-using namespace cyclone;
+#include "particle.h"
 
 void Particle::integrate(real duration) {
     assert(duration > 0.0);
