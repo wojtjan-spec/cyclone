@@ -1,0 +1,1137 @@
+commit 2a43a7a36db1a695cdebfdbe195e277973212723
+Author:     Jan Wojtkowski <j.wojtkowski@samsung.com>
+AuthorDate: Wed Mar 19 09:32:03 2025 +0100
+Commit:     Jan Wojtkowski <j.wojtkowski@samsung.com>
+CommitDate: Tue Apr 29 10:34:06 2025 +0200
+
+    Add security keys API unit tests
+    
+    Change-Id: I2a7e3358f2293a4ccadaadbd6b3c5b7e8aaf039d
+
+diff --git a/haltest/CMakeLists.txt b/haltest/CMakeLists.txt
+index 151c24a..7c465d2 100644
+--- a/haltest/CMakeLists.txt
++++ b/haltest/CMakeLists.txt
+@@ -23,7 +23,8 @@ SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -pie")
+ SET(SRCS
+     ${CMAKE_SOURCE_DIR}/haltest/main.cpp
+     ${CMAKE_SOURCE_DIR}/haltest/security-certs.cpp
+-    ${CMAKE_SOURCE_DIR}/haltest/security-auth.cpp)
++    ${CMAKE_SOURCE_DIR}/haltest/security-auth.cpp
++    ${CMAKE_SOURCE_DIR}/haltest/security-keys.cpp)
+ ADD_EXECUTABLE(${PROJECT_NAME} ${SRCS})
+ 
+ TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${TEST_DEPS_LDFLAGS} ${HALAPI_LIBRARY})
+diff --git a/haltest/security-keys.cpp b/haltest/security-keys.cpp
+new file mode 100644
+index 0000000..42aff09
+--- /dev/null
++++ b/haltest/security-keys.cpp
+@@ -0,0 +1,1107 @@
++/*
++ * Copyright (c) 2025 Samsung Electronics Co., Ltd.
++ *
++ * Licensed under the Apache License, Version 2.0 (the License);
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include <gtest/gtest.h>
++#include <string.h>
++#include <cstring>
++
++#include "hal-security-keys.h"
++
++const std::string alias = "19fb1c6585a741c0hsu26374998102839482311e41113c7795cfbb89fcc9b2ds";
++const std::string pwd = "c0dahsus263w74w957s3jfy32w998102";
++const std::string alias_2 = "0bd28504fafbc9e2334e2912aa8c6ab61475c1ec1b0af6c9cbd735730d56e054";
++const std::string pwd_2 = "fcc8a1c2eb73e013s473129eae2ae683";
++const std::string alias_3 = "31d401f83dccce5e4be0be37b2a34cff700c3891f8567867b7a0e19956995407";
++const std::string pwd_3 = "22ed1e6aa054f48d828051c975fd8ec8";
++
++// DSA public key prime
++const std::string p_buffer = std::string(
++    "8a15d84e41150f6e00fa9f0e3a4286fa920bbb90235b9187fea182bc23b"
++    "7b29b01217735234835a3e0af5574d407f5ce255d1d25132827489e7095"
++    "646be21bcf5081fd45819bcc60dc6ce0d74f84303d4678fc0dffb886b2d"
++    "8fcdb3b6abb104a73c005da6ba2a204f7c27d7f3d60cca8e78bd8b8085e"
++    "cf5fcd4943a3889fa943");
++
++// DSA public key subprime
++const std::string q_buffer = "aadd8b20799e34ef61009f7e427f928f2c983395";
++
++// DSA public key base
++const std::string g_buffer = std::string(
++    "1bfe5c2425fc7efe1472e4b524b531c89a6af012e93d613ff3a296fec03"
++    "5b103a5c11e39a3a7205979287a6731740f5bca00c6fdc032ea94eab9c3"
++    "1bd48d21f83befbef28323f82530bf987e3a8534aa73765f59a8aae5a7a"
++    "44f389ba3d21baab8f9a8df4abfa1e0e4bc429d99160cd35539fa7e1533"
++    "7449a94db1ad26c91a33");
++
++const std::string data_buffer = "test-data-buffer";
++hal_security_keys_data_s data = {
++    reinterpret_cast<unsigned char*>(const_cast<char*>(data_buffer.c_str())),
++    data_buffer.size()
++};
++
++std::string aad_buffer = "test-aad";
++hal_security_keys_data_s aad = {
++    reinterpret_cast<unsigned char*>(const_cast<char*>(aad_buffer.c_str())),
++    aad_buffer.size()
++};
++
++const std::string encapsulated_key_alias = "0dee3eaf26a48e6447042f7beb357e9780452bb85eebb3f550fe32a775779865";
++hal_security_keys_data_s encapsulated_key_id = {
++    reinterpret_cast<unsigned char*>(const_cast<char*>(encapsulated_key_alias.c_str())),
++    encapsulated_key_alias.size()
++};
++
++const std::string decapsulated_key_alias = "361db8d815985a6469626f62897d7929cb331be295a3912bf90df64129b54ed7";
++hal_security_keys_data_s decapsulated_key_id = {
++    reinterpret_cast<unsigned char*>(const_cast<char*>(decapsulated_key_alias.c_str())),
++    decapsulated_key_alias.size()
++};
++
++const std::string import_key = "5fd924625f6ab16a19cc9807c7c506ae1813490e4ba675f843d5a10e0baacdb8";
++hal_security_keys_data_s import_key_id = {
++    reinterpret_cast<unsigned char*>(const_cast<char*>(import_key.c_str())),
++    import_key.size()
++};
++
++hal_security_keys_algo_type_e aes_ctr_algo = HAL_SECURITY_KEYS_ALGO_TYPE_AES_CTR;
++hal_security_keys_hash_algorithm_e sha256_hash = HAL_SECURITY_KEYS_HASH_ALGORITHM_SHA256;
++
++void initialize_key_variables(
++    const hal_security_keys_context_s context,
++    const std::string& alias,
++    const std::string& pwd,
++    hal_security_keys_data_s& iv,
++    hal_security_keys_data_s& key_id,
++    hal_security_keys_data_s& key_pwd,
++    hal_security_keys_password_iv_s& key_pwd_iv)
++{
++    int ret;
++
++    key_id = {
++        reinterpret_cast<unsigned char*>(const_cast<char*>(alias.c_str())),
++        alias.size()
++    };
++
++    ret = hal_security_keys_create_iv(context, &iv);
++    EXPECT_EQ(ret, 0) << "Failed to create iv (" << ret << ")";
++
++    if(!pwd.empty()) {
++        key_pwd = {
++            reinterpret_cast<unsigned char*>(const_cast<char*>(pwd.c_str())),
++            pwd.size()
++        };
++    } else {
++        key_pwd = { nullptr, 0 };
++    }
++
++    key_pwd_iv = {key_pwd, iv};
++}
++
++struct data_free_deleter {
++    void operator()(hal_security_keys_data_s* p) const {
++        if (p->buffer)
++            free(p->buffer);
++        delete p;
++    }
++};
++
++class security_keys_data_ptr {
++    public:
++        security_keys_data_ptr() : data(new hal_security_keys_data_s{nullptr, 0}) {}
++
++        hal_security_keys_data_s* Get() {
++            return data.get();
++        }
++
++        unsigned char* GetBuffer() {
++            return data->buffer;
++        }
++
++        size_t GetLength() {
++            return data->length;
++        }
++
++    private:
++        std::unique_ptr<hal_security_keys_data_s, data_free_deleter> data;
++};
++
++class SECURITY_KEYS : public testing::Test
++{
++public:
++    static void SetUpTestSuite() {
++        int ret = hal_security_keys_get_backend();
++        ASSERT_EQ(ret, 0) << "Failed to get security keys backend (" << ret << ")";
++
++        ret = hal_security_keys_context_initialize(&context);
++        EXPECT_EQ(ret, 0) << "Failed to init key context (" << ret << ")";
++
++        initialize_key_variables(context, alias, pwd, iv, key_id, key_pwd, key_pwd_iv);
++
++        initialize_key_variables(context, alias_2, pwd_2, priv_iv, priv_key_id, priv_pwd, priv_key_pwd_iv);
++        initialize_key_variables(context, alias_3, pwd_3, pub_iv, pub_key_id, pub_pwd, pub_key_pwd_iv);
++    };
++
++    static void TearDownTestSuite() {
++        int ret = hal_security_keys_context_free(&context);
++        EXPECT_EQ(ret, 0) << "Failed to free key context (" << ret << ")";
++
++        ret = hal_security_keys_put_backend();
++        EXPECT_EQ(ret, 0) << "Failed to put security keys backend (" << ret << ")";
++    };
++
++protected:
++    static hal_security_keys_context_s context;
++    static hal_security_keys_data_s iv, key_id, key_pwd;
++    static hal_security_keys_password_iv_s key_pwd_iv, priv_key_pwd_iv, pub_key_pwd_iv;
++    static hal_security_keys_data_s priv_iv, priv_key_id, priv_pwd;
++    static hal_security_keys_data_s pub_iv, pub_key_id, pub_pwd;
++};
++
++void hex_to_bytes(const std::string& hex, unsigned char* bytes)
++{
++    for (size_t i = 0; i < hex.size() / 2; ++i) {
++        std::string byteStr = hex.substr(i * 2, 2);
++        bytes[i] = static_cast<unsigned char>(std::stoul(byteStr, nullptr, 16));
++    }
++}
++
++hal_security_keys_context_s SECURITY_KEYS::context;
++hal_security_keys_data_s SECURITY_KEYS::iv, SECURITY_KEYS::key_id, SECURITY_KEYS::key_pwd;
++hal_security_keys_data_s SECURITY_KEYS::priv_iv, SECURITY_KEYS::priv_key_id, SECURITY_KEYS::priv_pwd;
++hal_security_keys_data_s SECURITY_KEYS::pub_iv, SECURITY_KEYS::pub_key_id, SECURITY_KEYS::pub_pwd;
++hal_security_keys_password_iv_s SECURITY_KEYS::key_pwd_iv, SECURITY_KEYS::priv_key_pwd_iv, SECURITY_KEYS::pub_key_pwd_iv;
++
++TEST_F(SECURITY_KEYS, CreateIVPositive)
++{
++    int ret;
++
++    security_keys_data_ptr iv_data;
++
++    ret = hal_security_keys_create_iv(context, iv_data.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create iv (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyAESNegative)
++{
++    int ret;
++
++    const size_t incorrect_key_size_bits = 147;
++
++    security_keys_data_ptr key_tag;
++    ret = hal_security_keys_create_key_aes(context, incorrect_key_size_bits, key_id, key_pwd_iv, key_tag.Get());
++    EXPECT_EQ(ret, HAL_SECURITY_KEYS_ERROR_INTERNAL_ERROR) <<
++        "Created wrong size key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyAESPositive)
++{
++    int ret;
++
++    const size_t key_size_bits = 256;
++
++    security_keys_data_ptr key_tag;
++    ret = hal_security_keys_create_key_aes(context, key_size_bits, key_id, key_pwd_iv, key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyPairRSANegative)
++{
++    int ret;
++
++    const size_t incorrect_key_size_bits = 4098;
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_rsa(context, incorrect_key_size_bits, priv_key_id,
++        priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++    EXPECT_EQ(ret, HAL_SECURITY_KEYS_ERROR_INVALID_PARAMETER) << "Created wrong size key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyPairRSAPositive)
++{
++    int ret;
++
++    const size_t key_size_bits = 1024;
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_rsa(context, key_size_bits, priv_key_id,
++        priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create key pair rsa (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, pub_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, priv_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyPairDSAPositive)
++{
++    int ret;
++
++    size_t key_size_bits = 1024;
++
++    unsigned char bytes_prime[p_buffer.size() / 2];
++    hex_to_bytes(p_buffer, bytes_prime);
++
++    unsigned char bytes_subprime[q_buffer.size() / 2];
++    hex_to_bytes(q_buffer, bytes_subprime);
++
++    unsigned char bytes_base[g_buffer.size() / 2];
++    hex_to_bytes(g_buffer, bytes_base);
++
++    hal_security_keys_data_s prime = {
++        bytes_prime,
++        (p_buffer.size() / 2)
++    };
++    hal_security_keys_data_s subprime = {
++        bytes_subprime,
++        (q_buffer.size() / 2)
++    };
++    hal_security_keys_data_s base = {
++        bytes_base,
++        (g_buffer.size() / 2)
++    };
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_dsa(context, key_size_bits, prime, subprime, base,
++        priv_key_id, priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create key pair dsa (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, pub_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, priv_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyPairECDSANegative)
++{
++    int ret;
++
++    hal_security_keys_ec_type_e ec_wrong_type =
++        static_cast<hal_security_keys_ec_type_e>(-1);
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_ecdsa(context, ec_wrong_type,
++        priv_key_id, priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++    EXPECT_EQ(ret, HAL_SECURITY_KEYS_ERROR_INVALID_PARAMETER) << "Created wrong type key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyPairECDSAPositive)
++{
++    int ret;
++
++    std::vector<hal_security_keys_ec_type_e> ec_types = {
++        HAL_SECURITY_KEYS_EC_TYPE_PRIME192V1,
++        HAL_SECURITY_KEYS_EC_TYPE_PRIME256V1,
++        HAL_SECURITY_KEYS_EC_TYPE_SECP384R1
++    };
++
++    for (const auto& ec_type : ec_types) {
++        security_keys_data_ptr priv_key_tag;
++        security_keys_data_ptr pub_key_tag;
++        ret = hal_security_keys_create_key_pair_ecdsa(context, ec_type,
++            priv_key_id, priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++        EXPECT_EQ(ret, 0) << "Failed to create key pair ecdsa (" << ret << ")";
++
++        ret = hal_security_keys_destroy_key(context, pub_key_id);
++        EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++        ret = hal_security_keys_destroy_key(context, priv_key_id);
++        EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++    }
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyPairKEMNegative)
++{
++    int ret;
++
++    hal_security_keys_kem_type_e wrong_kem_type =
++        static_cast<hal_security_keys_kem_type_e>(-1);
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_kem(context, wrong_kem_type,
++        priv_key_id, priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++        EXPECT_EQ(ret, HAL_SECURITY_KEYS_ERROR_INVALID_PARAMETER) << "Created wrong type key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyPairKEMPositive)
++{
++    int ret;
++
++    std::vector<hal_security_keys_kem_type_e> kem_types = {
++        HAL_SECURITY_KEYS_ML_KEM_768,
++        HAL_SECURITY_KEYS_ML_KEM_1024
++    };
++
++    for (const auto& kem_type : kem_types) {
++        security_keys_data_ptr priv_key_tag;
++        security_keys_data_ptr pub_key_tag;
++        ret = hal_security_keys_create_key_pair_kem(context, kem_type,
++            priv_key_id, priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++        EXPECT_EQ(ret, 0) << "Failed to create key pair kem (" << ret << ")";
++
++        ret = hal_security_keys_destroy_key(context, pub_key_id);
++        EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++        ret = hal_security_keys_destroy_key(context, priv_key_id);
++        EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++    }
++}
++
++TEST_F(SECURITY_KEYS, CreateKeyAndEncryptDataDbpPositive)
++{
++    int ret;
++
++    ret = hal_security_keys_create_key_dbp(false);
++    EXPECT_EQ(ret, 0) << "Failed to create key dbp (" << ret << ")";
++
++    security_keys_data_ptr out_data;
++    ret = hal_security_keys_encrypt_data_dbp(
++        HAL_SECURITY_KEYS_DBP_SCHEME_VERSION_1,
++        data,
++        iv,
++        out_data.Get());
++    EXPECT_EQ(ret, 0) << "Failed to encrypt data dbp (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, EncryptDecryptDataPositive)
++{
++    int ret;
++
++    const size_t key_size_bits = 256;
++
++    security_keys_data_ptr key_tag;
++    ret = hal_security_keys_create_key_aes(context, key_size_bits, key_id, key_pwd_iv, key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s key_pwd_iv_tag = {key_pwd, iv, *(key_tag.Get())};
++    security_keys_data_ptr encrypted;
++    ret = hal_security_keys_encrypt_data(
++        context,
++        aes_ctr_algo,
++        sha256_hash,
++        key_id,
++        key_pwd_iv_tag,
++        data,
++        iv,
++        encrypted.Get());
++    EXPECT_EQ(ret, 0) << "Failed to encrypt data (" << ret << ")";
++
++    security_keys_data_ptr decrypted;
++    ret = hal_security_keys_decrypt_data(
++        context,
++        aes_ctr_algo,
++        sha256_hash,
++        key_id,
++        key_pwd_iv_tag,
++        *(encrypted.Get()),
++        iv,
++        decrypted.Get());
++    EXPECT_EQ(ret, 0) << "Failed to decrypt data (" << ret << ")";
++
++    EXPECT_EQ(memcmp(data.buffer, decrypted.GetBuffer(), data.length), 0);
++
++    ret = hal_security_keys_destroy_key(context, key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, EncryptDecryptDataAuthPositive)
++{
++    int ret;
++
++    const size_t key_size_bits = 128;
++
++    security_keys_data_ptr key_tag;
++    ret = hal_security_keys_create_key_aes(context, key_size_bits, key_id, key_pwd_iv, key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s key_pwd_iv_tag = {key_pwd, iv, *(key_tag.Get())};
++
++    size_t tag_size_bits = 128;
++    security_keys_data_ptr tag;
++    security_keys_data_ptr encrypted;
++    ret = hal_security_keys_encrypt_data_auth(
++        context,
++        key_id,
++        key_pwd_iv_tag,
++        data,
++        iv,
++        aad,
++        tag_size_bits,
++        tag.Get(),
++        encrypted.Get());
++    EXPECT_EQ(ret, 0) << "Failed to encrypt data auth (" << ret << ")";
++
++    security_keys_data_ptr decrypted;
++    ret = hal_security_keys_decrypt_data_auth(
++        context,
++        key_id,
++        key_pwd_iv_tag,
++        *(encrypted.Get()),
++        iv,
++        aad,
++        tag_size_bits,
++        *(tag.Get()),
++        decrypted.Get());
++    EXPECT_EQ(ret, 0) << "Failed to decrypt data auth (" << ret << ")";
++
++    EXPECT_EQ(memcmp(data.buffer, decrypted.GetBuffer(), data.length), 0);
++
++    ret = hal_security_keys_destroy_key(context, key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, DestroyKeyPositive)
++{
++    int ret;
++
++    const size_t key_size_bits = 128;
++
++    security_keys_data_ptr key_tag;
++    ret = hal_security_keys_create_key_aes(context, key_size_bits, key_id, key_pwd_iv, key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s key_pwd_iv_tag = {key_pwd, iv, *(key_tag.Get())};
++
++    ret = hal_security_keys_destroy_key(context, key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    security_keys_data_ptr out_data;
++    ret = hal_security_keys_export_data(
++        context,
++        key_id,
++        key_pwd_iv_tag,
++        HAL_SECURITY_KEYS_DATA_TYPE_KEY_AES,
++        out_data.Get());
++    EXPECT_EQ(ret, HAL_SECURITY_KEYS_ERROR_INVALID_PARAMETER) << "Exported destroyed data (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, ImportExportDataPositive)
++{
++    int ret;
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_ecdsa(context, HAL_SECURITY_KEYS_EC_TYPE_PRIME256V1,
++        priv_key_id, priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create key pair ecdsa (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s pub_key_iv_tag = {pub_pwd, pub_iv, *(pub_key_tag.Get())};
++    security_keys_data_ptr out_data;
++    ret = hal_security_keys_export_data(
++        context,
++        pub_key_id,
++        pub_key_iv_tag,
++        HAL_SECURITY_KEYS_DATA_TYPE_KEY_ECDSA_PUBLIC,
++        out_data.Get());
++    EXPECT_EQ(ret, 0) << "Failed to export data (" << ret << ")";
++
++    const std::string new_key = "new-key-id";
++    hal_security_keys_data_s new_key_id = {
++        reinterpret_cast<unsigned char*>(const_cast<char*>(new_key.c_str())),
++        new_key.size()
++    };
++
++    hal_security_keys_data_s empty_iv, empty_tag;
++    hal_security_keys_password_iv_s new_key_pwd_iv = {{nullptr, 0}, {nullptr, 0}};
++    security_keys_data_ptr data_tag;
++    ret = hal_security_keys_import_data(
++        context,
++        new_key_id,
++        new_key_pwd_iv,
++        HAL_SECURITY_KEYS_DATA_TYPE_KEY_ECDSA_PUBLIC,
++        *(out_data.Get()),
++        empty_iv,
++        empty_tag,
++        data_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to import data (" << ret << ")";
++
++    ret = hal_security_keys_destroy_data(context, new_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy data (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, pub_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, priv_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CipherTestPositive)
++{
++    int ret;
++
++    const size_t key_size_bits = 128;
++
++    security_keys_data_ptr key_tag;
++    ret = hal_security_keys_create_key_aes(context, key_size_bits, key_id, key_pwd_iv, key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s key_pwd_iv_tag = {key_pwd, iv, *(key_tag.Get())};
++
++    size_t tag_size_bits = 128;
++    hal_security_keys_cipher_context_t cipher_context;
++    ret =  hal_security_keys_cipher_initialize(
++        context,
++        true,
++        key_id,
++        key_pwd_iv_tag,
++        iv,
++        aad,
++        tag_size_bits,
++        &cipher_context);
++    EXPECT_EQ(ret, 0) << "Failed to initialize cipher (" << ret << ")";
++
++    ret = hal_security_keys_cipher_add_aad(
++        context,
++        cipher_context,
++        aad);
++    EXPECT_EQ(ret, 0) << "Failed to add aad to cipher (" << ret << ")";
++
++    security_keys_data_ptr updated;
++    ret = hal_security_keys_cipher_update(
++        context,
++        cipher_context,
++        data,
++        updated.Get());
++    EXPECT_EQ(ret, 0) << "Failed to update cipher (" << ret << ")";
++
++    hal_security_keys_data_s final_data;
++    security_keys_data_ptr out_cipher;
++    ret = hal_security_keys_cipher_finalize(
++        context,
++        cipher_context,
++        final_data,
++        out_cipher.Get());
++    EXPECT_EQ(ret, 0) << "Failed to finalize cipher (" << ret << ")";
++
++    ret = hal_security_keys_cipher_free(context, cipher_context);
++    EXPECT_EQ(ret, 0) << "Failed to free cipher context (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, EncapsDecapsPositive)
++{
++    int ret;
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_kem(context, HAL_SECURITY_KEYS_ML_KEM_768,
++        priv_key_id, priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create key pair kem (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s priv_key_pass = {priv_pwd, priv_iv, *(priv_key_tag.Get())};
++    hal_security_keys_password_iv_tag_s pub_key_pass = {pub_pwd, pub_iv, *(pub_key_tag.Get())};
++
++    security_keys_data_ptr ciphertext;
++    security_keys_data_ptr encapsulated_secret_tag;
++    ret = hal_security_keys_encapsulate_key(
++        context,
++        HAL_SECURITY_KEYS_ML_KEM_768,
++        pub_key_id,
++        pub_key_pass,
++        encapsulated_key_id,
++        key_pwd_iv,
++        ciphertext.Get(),
++        encapsulated_secret_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to encapsulate key (" << ret << ")";
++
++    security_keys_data_ptr decapsulated_secret_tag;
++    ret = hal_security_keys_decapsulate_key(
++        context,
++        HAL_SECURITY_KEYS_ML_KEM_768,
++        priv_key_id,
++        priv_key_pass,
++        decapsulated_key_id,
++        key_pwd_iv,
++        *(ciphertext.Get()),
++        decapsulated_secret_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to decapsulate key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s encapsulated_key_pwd_iv_tag =
++        {key_pwd, iv, *(encapsulated_secret_tag.Get())};
++    security_keys_data_ptr encrypted;
++    ret = hal_security_keys_encrypt_data(
++        context,
++        aes_ctr_algo,
++        sha256_hash,
++        encapsulated_key_id,
++        encapsulated_key_pwd_iv_tag,
++        data,
++        iv,
++        encrypted.Get());
++    EXPECT_EQ(ret, 0) << "Failed to encrypt data (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s decapsulated_key_pwd_iv_tag =
++        {key_pwd, iv, *(decapsulated_secret_tag.Get())};
++    security_keys_data_ptr decrypted;
++    ret = hal_security_keys_decrypt_data(
++        context,
++        aes_ctr_algo,
++        sha256_hash,
++        decapsulated_key_id,
++        decapsulated_key_pwd_iv_tag,
++        *(encrypted.Get()),
++        iv,
++        decrypted.Get());
++    EXPECT_EQ(ret, 0) << "Failed to decrypt data (" << ret << ")";
++
++    EXPECT_EQ(memcmp(data.buffer, decrypted.GetBuffer(), data.length), 0);
++
++    ret = hal_security_keys_destroy_data(context, encapsulated_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_data(context, decapsulated_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, pub_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, priv_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, CreateAndVerifySignaturePositive)
++{
++    int ret;
++
++    const size_t key_size_bits = 1024;
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_rsa(context, key_size_bits, priv_key_id,
++        priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create key pair rsa (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s priv_key_pass = {priv_pwd, priv_iv, *(priv_key_tag.Get())};
++
++    security_keys_data_ptr signature;
++    ret = hal_security_keys_create_signature(
++        context,
++        HAL_SECURITY_KEYS_ALGO_TYPE_RSA,
++        HAL_SECURITY_KEYS_HASH_ALGORITHM_SHA256,
++        priv_key_id,
++        priv_key_pass,
++        data,
++        signature.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create signature (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s pub_key_pass = {pub_pwd, pub_iv, *(pub_key_tag.Get())};
++    ret = hal_security_keys_verify_signature(
++        context,
++        HAL_SECURITY_KEYS_ALGO_TYPE_RSA,
++        HAL_SECURITY_KEYS_HASH_ALGORITHM_SHA256,
++        pub_key_id,
++        pub_key_pass,
++        data,
++        *(signature.Get()));
++    EXPECT_EQ(ret, 0) << "Failed to verify signature (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, pub_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, priv_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, GetMaxChunkSizePositive)
++{
++    int ret;
++
++    size_t chunk_size;
++    ret = hal_security_keys_get_max_chunk_size(context, &chunk_size);
++    EXPECT_EQ(ret, 0) << "Failed to get max chunk size (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, DeriveECDHPositive)
++{
++    int ret;
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_ecdsa(context, HAL_SECURITY_KEYS_EC_TYPE_PRIME192V1,
++        priv_key_id, priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv,
++        priv_key_tag.Get(), pub_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create key pair ecdsa (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s priv_key_pass_iv_tag =
++        {priv_pwd, priv_iv, *(priv_key_tag.Get())};
++
++    hal_security_keys_password_iv_tag_s pub_key_pass_iv_tag =
++        {pub_pwd, pub_iv, *(pub_key_tag.Get())};
++
++    security_keys_data_ptr pub_key;
++    ret = hal_security_keys_export_data(
++        context,
++        pub_key_id,
++        pub_key_pass_iv_tag,
++        HAL_SECURITY_KEYS_DATA_TYPE_KEY_ECDSA_PUBLIC,
++        pub_key.Get());
++    EXPECT_EQ(ret, 0) << "Failed to export ecdsa public key (" << ret << ")";
++
++    // We need to divide public key into two parts: x and y coordinates. Each coordinate has length of 24 bytes.
++    size_t pub_key_coordinate_length = 24;
++    size_t x_index_begin = 27;
++    size_t y_index_begin = 51;
++    unsigned char pub_x_buffer[pub_key_coordinate_length];
++    unsigned char pub_y_buffer[pub_key_coordinate_length];
++
++    memcpy(pub_x_buffer, pub_key.GetBuffer() + x_index_begin, pub_key_coordinate_length);
++    memcpy(pub_y_buffer, pub_key.GetBuffer() + y_index_begin, pub_key_coordinate_length);
++
++    hal_security_keys_data_s pub_x = {pub_x_buffer, pub_key_coordinate_length};
++    hal_security_keys_data_s pub_y = {pub_y_buffer, pub_key_coordinate_length};
++
++    const std::string secret = "secret-id";
++    hal_security_keys_data_s secret_id = {
++        reinterpret_cast<unsigned char*>(const_cast<char*>(secret.c_str())),
++        secret.size()
++    };
++
++    hal_security_keys_data_s secret_pass, secret_iv;
++    security_keys_data_ptr secret_tag;
++    hal_security_keys_password_iv_s secret_pwd = {secret_pass, secret_iv};
++    ret = hal_security_keys_derive_ecdh(
++        context,
++        HAL_SECURITY_KEYS_EC_TYPE_PRIME192V1,
++        pub_x,
++        pub_y,
++        priv_key_id,
++        priv_key_pass_iv_tag,
++        secret_id,
++        secret_pwd,
++        secret_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to derive ecdh (" << ret << ")";
++
++    ret = hal_security_keys_destroy_data(context, secret_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy data (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, pub_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, priv_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, DeriveKBKDFPositive)
++{
++    int ret;
++
++    const size_t key_size_bits = 256;
++
++    security_keys_data_ptr key_tag;
++    ret = hal_security_keys_create_key_aes(context, key_size_bits, key_id, key_pwd_iv, key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s key_pwd_iv_tag = {key_pwd, iv, *(key_tag.Get())};
++
++    hal_security_keys_data_s label = {
++        reinterpret_cast<unsigned char*>(const_cast<char*>("label")), 5};
++    hal_security_keys_data_s derive_context = {
++        reinterpret_cast<unsigned char*>(const_cast<char*>("context")), 7};
++    hal_security_keys_data_s fixed = {
++        reinterpret_cast<unsigned char*>(const_cast<char*>("fixed")), 5};
++
++    hal_security_keys_kbkdf_params_s params;
++    params.prf = HAL_SECURITY_KEYS_PRF_TYPE_HMAC_SHA256;
++    params.length = 32;
++    params.mode = HAL_SECURITY_KEYS_KBKDF_MODE_COUNTER;
++    params.label = label;
++    params.context = derive_context;
++    params.fixed = fixed;
++    params.location = HAL_SECURITY_KEYS_KBKDF_COUNTER_LOCATION_BEFORE_FIXED;
++    params.rlen = 8;
++    params.llen = 16;
++    params.no_separator = true;
++
++    hal_security_keys_data_s shared_secret_iv, shared_secret_id, shared_secret_pwd;
++    hal_security_keys_password_iv_s shared_secret_pwd_iv;
++    initialize_key_variables(
++        context, alias_2, pwd_2, shared_secret_iv, shared_secret_id, shared_secret_pwd, shared_secret_pwd_iv);
++
++    security_keys_data_ptr derived_key_tag;
++    ret =  hal_security_keys_derive_kbkdf(
++        context,
++        params,
++        key_id,
++        key_pwd_iv_tag,
++        shared_secret_id,
++        shared_secret_pwd_iv,
++        derived_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to derive kbkdf (" << ret << ")";
++
++    ret = hal_security_keys_destroy_data(context, shared_secret_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy data (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, DeriveHybridKBKDFPositive)
++{
++    int ret;
++
++    const size_t key_size_bits = 256;
++    hal_security_keys_data_s iv_first, key_id_first, key_pwd_first;
++    hal_security_keys_password_iv_s key_pwd_iv_first;
++    security_keys_data_ptr key_tag_first;
++
++    initialize_key_variables(context, alias, pwd, iv_first, key_id_first, key_pwd_first, key_pwd_iv_first);
++
++    ret = hal_security_keys_create_key_aes(context, key_size_bits,
++        key_id_first, key_pwd_iv_first, key_tag_first.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s key_pwd_iv_tag_first = {key_pwd_first, iv_first, *(key_tag_first.Get())};
++
++    hal_security_keys_data_s iv_second, key_id_second, pwd_second;
++    hal_security_keys_password_iv_s key_pwd_iv_second;
++    security_keys_data_ptr key_tag_second;
++
++    initialize_key_variables(context, alias_2, pwd_2, iv_second, key_id_second, pwd_second, key_pwd_iv_second);
++
++    ret = hal_security_keys_create_key_aes(context, key_size_bits,
++        key_id_second, key_pwd_iv_second, key_tag_second.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s key_pwd_iv_tag_second = {pwd_second, iv_second, *(key_tag_second.Get())};
++
++    hal_security_keys_data_s label = {
++        reinterpret_cast<unsigned char*>(const_cast<char*>("label")), 5};
++    hal_security_keys_data_s derive_context = {
++        reinterpret_cast<unsigned char*>(const_cast<char*>("context")), 7};
++    hal_security_keys_data_s fixed = {
++        reinterpret_cast<unsigned char*>(const_cast<char*>("fixed")), 5};
++
++    hal_security_keys_kbkdf_params_s params;
++    params.prf = HAL_SECURITY_KEYS_PRF_TYPE_HMAC_SHA256;
++    params.length = 32;
++    params.mode = HAL_SECURITY_KEYS_KBKDF_MODE_COUNTER;
++    params.label = label;
++    params.context = derive_context;
++    params.fixed = fixed;
++    params.location = HAL_SECURITY_KEYS_KBKDF_COUNTER_LOCATION_BEFORE_FIXED;
++    params.rlen = 8;
++    params.llen = 16;
++    params.no_separator = true;
++
++    security_keys_data_ptr derived_key_tag;
++    ret =  hal_security_keys_derive_hybrid_kbkdf(
++        context,
++        params,
++        key_id_first,
++        key_pwd_iv_tag_first,
++        key_id_second,
++        key_pwd_iv_tag_second,
++        key_id,
++        key_pwd_iv,
++        derived_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to derive hybrid kbkdf (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, key_id_first);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, key_id_second);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, WrapUnwrapConcatenatedDataPositive)
++{
++    int ret;
++
++    size_t key_size_bits = 1024;
++
++    security_keys_data_ptr priv_key_tag;
++    security_keys_data_ptr pub_key_tag;
++    ret = hal_security_keys_create_key_pair_rsa(context, key_size_bits, priv_key_id,
++        priv_key_pwd_iv, pub_key_id, pub_key_pwd_iv, priv_key_tag.Get(), pub_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create key pair rsa (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s priv_key_pass = {priv_pwd, priv_iv, *(priv_key_tag.Get())};
++    hal_security_keys_password_iv_tag_s pub_key_pass = {pub_pwd, pub_iv, *(pub_key_tag.Get())};
++
++    const size_t key_size_bits_AES = 256;
++
++    security_keys_data_ptr key_tag;
++    ret = hal_security_keys_create_key_aes(context, key_size_bits_AES, key_id, key_pwd_iv, key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s key_pass = {key_pwd, iv, *(key_tag.Get())};
++
++    security_keys_data_ptr wrapped_key;
++    ret = hal_security_keys_wrap_concatenated_data(
++        context,
++        HAL_SECURITY_KEYS_ALGO_TYPE_RSA_OAEP,
++        HAL_SECURITY_KEYS_HASH_ALGORITHM_SHA256,
++        pub_key_id,
++        pub_key_pass,
++        key_id,
++        key_pass,
++        data,
++        wrapped_key.Get());
++    EXPECT_EQ(ret, 0) << "Failed to wrap concatenated data (" << ret << ")";
++
++    security_keys_data_ptr imported_data, imported_key;
++    ret = hal_security_keys_unwrap_concatenated_data(
++        context,
++        HAL_SECURITY_KEYS_ALGO_TYPE_RSA_OAEP,
++        HAL_SECURITY_KEYS_HASH_ALGORITHM_SHA256,
++        priv_key_id,
++        priv_key_pass,
++        *(wrapped_key.Get()),
++        key_id,
++        key_pwd_iv,
++        HAL_SECURITY_KEYS_DATA_TYPE_KEY_AES,
++        key_size_bits_AES,
++        imported_data.Get(),
++        imported_key.Get());
++    EXPECT_EQ(ret, 0) << "Failed to unwrap concatenated data (" << ret << ")";
++
++    EXPECT_EQ(memcmp(data.buffer, imported_data.GetBuffer(), data.length), 0);
++
++    ret = hal_security_keys_destroy_key(context, pub_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, priv_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
++
++TEST_F(SECURITY_KEYS, ImportExportWrappedKeyPositive)
++{
++    int ret;
++
++    hal_security_keys_algo_type_e algo = HAL_SECURITY_KEYS_ALGO_TYPE_AES_CTR;
++    hal_security_keys_hash_algorithm_e hash = HAL_SECURITY_KEYS_HASH_ALGORITHM_SHA1;
++
++    size_t key_size_bits = 256;
++    hal_security_keys_data_s wrapping_key_iv, wrapping_key_id, wrapping_key_pwd;
++    hal_security_keys_password_iv_s wrapping_key_pwd_iv;
++
++    initialize_key_variables(
++        context, alias, pwd, wrapping_key_iv, wrapping_key_id, wrapping_key_pwd, wrapping_key_pwd_iv);
++
++    security_keys_data_ptr wrapping_key_tag;
++    ret = hal_security_keys_create_key_aes(context, key_size_bits, wrapping_key_id,
++        wrapping_key_pwd_iv, wrapping_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s wrapping_key_pwd_iv_tag =
++        {wrapping_key_pwd, wrapping_key_iv, *(wrapping_key_tag.Get())};
++
++
++    hal_security_keys_data_s key_to_wrap_iv, key_to_wrap_id, key_to_wrap_pwd;
++    hal_security_keys_password_iv_s key_to_wrap_pwd_iv;
++
++    initialize_key_variables(
++        context, alias_2, pwd_2, key_to_wrap_iv, key_to_wrap_id, key_to_wrap_pwd, key_to_wrap_pwd_iv);
++
++    security_keys_data_ptr key_to_wrap_tag;
++    ret = hal_security_keys_create_key_aes(context, key_size_bits, key_to_wrap_id,
++        key_to_wrap_pwd_iv, key_to_wrap_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to create AES key (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s key_to_wrap_pwd_iv_tag =
++        {key_to_wrap_pwd, key_to_wrap_iv, *(key_to_wrap_tag.Get())};
++
++    size_t ctr_len_or_tag_size_bits = 64;
++    hal_security_keys_data_type_e key_type = HAL_SECURITY_KEYS_DATA_TYPE_KEY_AES;
++    security_keys_data_ptr export_key_tag;
++    ret = hal_security_keys_export_wrapped_key(
++        context,
++        algo,
++        hash,
++        iv,
++        aad,
++        ctr_len_or_tag_size_bits,
++        wrapping_key_id,
++        wrapping_key_pwd_iv_tag,
++        key_to_wrap_id,
++        key_to_wrap_pwd_iv_tag,
++        key_type,
++        export_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to export wrapped key (" << ret << ")";
++
++    security_keys_data_ptr import_key_tag;
++    ret = hal_security_keys_import_wrapped_key(
++        context,
++        algo,
++        hash,
++        iv,
++        aad,
++        ctr_len_or_tag_size_bits,
++        wrapping_key_id,
++        wrapping_key_pwd_iv_tag,
++        *(export_key_tag.Get()),
++        import_key_id,
++        key_pwd_iv,
++        key_type,
++        import_key_tag.Get());
++    EXPECT_EQ(ret, 0) << "Failed to import wrapped key (" << ret << ")";
++
++    security_keys_data_ptr encrypted;
++    ret = hal_security_keys_encrypt_data(
++        context,
++        aes_ctr_algo,
++        sha256_hash,
++        key_to_wrap_id,
++        key_to_wrap_pwd_iv_tag,
++        data,
++        iv,
++        encrypted.Get());
++    EXPECT_EQ(ret, 0) << "Failed to encrypt data (" << ret << ")";
++
++    hal_security_keys_password_iv_tag_s imported_key_pwd_iv_tag =
++        {key_pwd, iv, *(import_key_tag.Get())};
++
++    security_keys_data_ptr decrypted;
++    ret = hal_security_keys_decrypt_data(
++        context,
++        aes_ctr_algo,
++        sha256_hash,
++        import_key_id,
++        imported_key_pwd_iv_tag,
++        *(encrypted.Get()),
++        iv,
++        decrypted.Get());
++    EXPECT_EQ(ret, 0) << "Failed to decrypt data (" << ret << ")";
++
++    EXPECT_EQ(memcmp(data.buffer, decrypted.GetBuffer(), data.length), 0);
++
++    ret = hal_security_keys_destroy_data(context, import_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy data (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, wrapping_key_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++
++    ret = hal_security_keys_destroy_key(context, key_to_wrap_id);
++    EXPECT_EQ(ret, 0) << "Failed to destroy key (" << ret << ")";
++}
