@@ -1,0 +1,145 @@
+commit 21fc03ef98b9518fb09c3aa6071e97641f108320
+Author:     Jan Wojtkowski <j.wojtkowski@samsung.com>
+AuthorDate: Tue May 20 14:17:49 2025 +0200
+Commit:     Jan Wojtkowski <j.wojtkowski@samsung.com>
+CommitDate: Tue May 20 14:17:49 2025 +0200
+
+    Fix aes padding types names
+    
+    Change-Id: I5e03b13116d7dea4f2d44f66540959ab8d3a9879
+
+diff --git a/src/ckm/unprivileged/encryption-decryption.cpp b/src/ckm/unprivileged/encryption-decryption.cpp
+index 6cefbe6..e64cf73 100644
+--- a/src/ckm/unprivileged/encryption-decryption.cpp
++++ b/src/ckm/unprivileged/encryption-decryption.cpp
+@@ -453,7 +453,7 @@ void testNoPaddingInvalidDataSize(const Algo& algo, const RawBufferPtr& data)
+    };
+ 
+    // invalid data size
+-   setParam(params, CKMC_PARAM_ED_PADDING, CKMC_AES_NONE_PADDING);
++   setParam(params, CKMC_PARAM_ED_PADDING, CKMC_AES_PADDING_NONE);
+    test();
+ }
+ 
+@@ -521,7 +521,7 @@ void testEncryptionDifferentPaddings(const Algo& algo)
+     setParam(params, CKMC_PARAM_ED_IV, DEFAULT_IV);
+ 
+     // encryption with PKCS7 padding
+-    setParam(params, CKMC_PARAM_ED_PADDING, CKMC_AES_PKCS7_PADDING);
++    setParam(params, CKMC_PARAM_ED_PADDING, CKMC_AES_PADDING_PKCS7);
+     assert_crypto_positive(apiEncrypt,
+                            params.get(),
+                            aesKey.c_str(),
+@@ -532,7 +532,7 @@ void testEncryptionDifferentPaddings(const Algo& algo)
+     firstEncrypted = create_raw_buffer(firstEncryptedTmp);
+ 
+     // encryption with ISO9797_M2 padding
+-    setParam(params, CKMC_PARAM_ED_PADDING, CKMC_AES_ISO9797_M2_PADDING);
++    setParam(params, CKMC_PARAM_ED_PADDING, CKMC_AES_PADDING_ISO9797_M2);
+     assert_crypto_positive(apiEncrypt,
+                            params.get(),
+                            aesKey.c_str(),
+@@ -1599,46 +1599,46 @@ RUNNER_TEST_MULTIPLE(TED_1011_no_padding_invalid_data_size, SyncEnv, AsyncEnv)
+ 
+ RUNNER_TEST_MULTIPLE(TED_1012_none_padding, SyncEnv, AsyncEnv)
+ {
+-    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 128}, BLOCK_SIZE_DATA, CKMC_AES_NONE_PADDING);
+-    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 192}, BLOCK_SIZE_DATA, CKMC_AES_NONE_PADDING);
+-    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 256}, BLOCK_SIZE_DATA, CKMC_AES_NONE_PADDING);
++    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 128}, BLOCK_SIZE_DATA, CKMC_AES_PADDING_NONE);
++    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 192}, BLOCK_SIZE_DATA, CKMC_AES_PADDING_NONE);
++    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 256}, BLOCK_SIZE_DATA, CKMC_AES_PADDING_NONE);
+ 
+     int n = 20;
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 128},
+-        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_NONE_PADDING);
++        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_PADDING_NONE);
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 192},
+-        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_NONE_PADDING);
++        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_PADDING_NONE);
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 256},
+-        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_NONE_PADDING);
++        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_PADDING_NONE);
+ 
+     n = 85;
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 128},
+-        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_NONE_PADDING);
++        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_PADDING_NONE);
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 192},
+-        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_NONE_PADDING);
++        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_PADDING_NONE);
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 256},
+-        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_NONE_PADDING);
++        create_raw_buffer(createRandomBufferCAPI(n * AES_BLOCK_SIZE)), CKMC_AES_PADDING_NONE);
+ }
+ 
+ RUNNER_TEST_MULTIPLE(TED_1013_iso9797_m2_padding, SyncEnv, AsyncEnv)
+ {
+-    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 128}, BLOCK_SIZE_DATA, CKMC_AES_ISO9797_M2_PADDING);
+-    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 192}, BLOCK_SIZE_DATA, CKMC_AES_ISO9797_M2_PADDING);
+-    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 256}, BLOCK_SIZE_DATA, CKMC_AES_ISO9797_M2_PADDING);
++    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 128}, BLOCK_SIZE_DATA, CKMC_AES_PADDING_ISO9797_M2);
++    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 192}, BLOCK_SIZE_DATA, CKMC_AES_PADDING_ISO9797_M2);
++    testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 256}, BLOCK_SIZE_DATA, CKMC_AES_PADDING_ISO9797_M2);
+ 
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 128},
+-        SMALLER_BLOCK_SIZE_DATA, CKMC_AES_ISO9797_M2_PADDING);
++        SMALLER_BLOCK_SIZE_DATA, CKMC_AES_PADDING_ISO9797_M2);
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 192},
+-        SMALLER_BLOCK_SIZE_DATA, CKMC_AES_ISO9797_M2_PADDING);
++        SMALLER_BLOCK_SIZE_DATA, CKMC_AES_PADDING_ISO9797_M2);
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 256},
+-        SMALLER_BLOCK_SIZE_DATA, CKMC_AES_ISO9797_M2_PADDING);
++        SMALLER_BLOCK_SIZE_DATA, CKMC_AES_PADDING_ISO9797_M2);
+ 
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 128},
+-        BIGGER_BLOCK_SIZE_DATA, CKMC_AES_ISO9797_M2_PADDING);
++        BIGGER_BLOCK_SIZE_DATA, CKMC_AES_PADDING_ISO9797_M2);
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 192},
+-        BIGGER_BLOCK_SIZE_DATA, CKMC_AES_ISO9797_M2_PADDING);
++        BIGGER_BLOCK_SIZE_DATA, CKMC_AES_PADDING_ISO9797_M2);
+     testEncryptionDecryptionPadding({CKMC_ALGO_AES_CBC, 256},
+-        BIGGER_BLOCK_SIZE_DATA, CKMC_AES_ISO9797_M2_PADDING);
++        BIGGER_BLOCK_SIZE_DATA, CKMC_AES_PADDING_ISO9797_M2);
+ }
+ 
+ RUNNER_TEST_MULTIPLE(TED_1014_encryption_different_paddings, SyncEnv, AsyncEnv)
+@@ -1652,30 +1652,30 @@ RUNNER_TEST_MULTIPLE(TED_1015_encryption_decryption_different_paddings, SyncEnv,
+ {
+     testEncryptionDecryptionDifferentPaddings({CKMC_ALGO_AES_CBC, 128},
+         SMALLER_BLOCK_SIZE_DATA,
+-        CKMC_AES_PKCS7_PADDING, CKMC_AES_ISO9797_M2_PADDING);
++        CKMC_AES_PADDING_PKCS7, CKMC_AES_PADDING_ISO9797_M2);
+     testEncryptionDecryptionDifferentPaddings({CKMC_ALGO_AES_CBC, 192},
+         BLOCK_SIZE_DATA,
+-        CKMC_AES_PKCS7_PADDING, CKMC_AES_ISO9797_M2_PADDING);
++        CKMC_AES_PADDING_PKCS7, CKMC_AES_PADDING_ISO9797_M2);
+     testEncryptionDecryptionDifferentPaddings({CKMC_ALGO_AES_CBC, 256},
+         BIGGER_BLOCK_SIZE_DATA,
+-        CKMC_AES_PKCS7_PADDING, CKMC_AES_ISO9797_M2_PADDING);
++        CKMC_AES_PADDING_PKCS7, CKMC_AES_PADDING_ISO9797_M2);
+ 
+     testEncryptionDecryptionDifferentPaddings({CKMC_ALGO_AES_CBC, 128},
+         SMALLER_BLOCK_SIZE_DATA,
+-        CKMC_AES_ISO9797_M2_PADDING, CKMC_AES_PKCS7_PADDING);
++        CKMC_AES_PADDING_ISO9797_M2, CKMC_AES_PADDING_PKCS7);
+     testEncryptionDecryptionDifferentPaddings({CKMC_ALGO_AES_CBC, 192},
+         BIGGER_BLOCK_SIZE_DATA,
+-        CKMC_AES_ISO9797_M2_PADDING, CKMC_AES_PKCS7_PADDING);
++        CKMC_AES_PADDING_ISO9797_M2, CKMC_AES_PADDING_PKCS7);
+     testEncryptionDecryptionDifferentPaddings({CKMC_ALGO_AES_CBC, 256},
+         BLOCK_SIZE_DATA,
+-        CKMC_AES_ISO9797_M2_PADDING, CKMC_AES_PKCS7_PADDING);
++        CKMC_AES_PADDING_ISO9797_M2, CKMC_AES_PADDING_PKCS7);
+ 
+     testEncryptionDecryptionDifferentPaddings({CKMC_ALGO_AES_CBC, 128},
+         BLOCK_SIZE_DATA,
+-        CKMC_AES_NONE_PADDING, CKMC_AES_ISO9797_M2_PADDING);
++        CKMC_AES_PADDING_NONE, CKMC_AES_PADDING_ISO9797_M2);
+     testEncryptionDecryptionDifferentPaddings({CKMC_ALGO_AES_CBC, 192},
+         BLOCK_SIZE_DATA,
+-        CKMC_AES_NONE_PADDING, CKMC_AES_PKCS7_PADDING);
++        CKMC_AES_PADDING_NONE, CKMC_AES_PADDING_PKCS7);
+ }
+ 
+ RUNNER_TEST_MULTIPLE(TED_1016_invalid_padding_type_enc, SyncEnv, AsyncEnv)
