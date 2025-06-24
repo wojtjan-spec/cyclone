@@ -1,0 +1,1584 @@
+commit 405999e1a5959382f3e089fd53b322a1027bda8b
+Author:     Jan Wojtkowski <j.wojtkowski@AMDC4920.eu.corp.samsungelectronics.net>
+AuthorDate: Tue May 20 10:38:55 2025 +0200
+Commit:     Jan Wojtkowski <j.wojtkowski@samsung.com>
+CommitDate: Tue Jun 24 11:20:56 2025 +0200
+
+    Add more logs to the key-manager
+    
+    Change-Id: Ia181e6f7669afb2621e1620d9588461ab4eb2502
+
+diff --git a/src/manager/client-async/storage-receiver.cpp b/src/manager/client-async/storage-receiver.cpp
+index 3d42fb6..e0ffc60 100644
+--- a/src/manager/client-async/storage-receiver.cpp
++++ b/src/manager/client-async/storage-receiver.cpp
+@@ -57,51 +57,63 @@ void StorageReceiver::processResponse()
+ 
+ 	switch (static_cast<LogicCommand>(req.command)) {
+ 	case LogicCommand::GET:
++		LogInfo("Parse LogicCommand::GET");
+ 		parseGetCommand();
+ 		break;
+ 
+ 	case LogicCommand::GET_PKCS12:
++		LogInfo("Parse LogicCommand::GET_PKCS12");
+ 		parseGetPKCS12Command();
+ 		break;
+ 
+ 	case LogicCommand::GET_LIST:
++		LogInfo("Parse LogicCommand::GET_LIST");
+ 		parseGetListCommand();
+ 		break;
+ 
+ 	case LogicCommand::SAVE:
++		LogInfo("Parse LogicCommand::SAVE");
+ 		parseSaveCommand();
+ 		break;
+ 
+ 	case LogicCommand::SAVE_PKCS12:
++		LogInfo("Parse LogicCommand::SAVE_PKCS12");
+ 		parseSavePKCS12Command();
+ 		break;
+ 
+ 	case LogicCommand::REMOVE:
++		LogInfo("Parse LogicCommand::REMOVE");
+ 		parseRemoveCommand();
+ 		break;
+ 
+ 	case LogicCommand::CREATE_KEY_AES:
++		LogInfo("Parse LogicCommand::CREATE_KEY_AES");
+ 		parseRetCode(&ManagerAsync::Observer::ReceivedCreateKeyAES);
+ 		break;
+ 
+ 	case LogicCommand::CREATE_KEY_PAIR:
++		LogInfo("Parse LogicCommand::CREATE_KEY_PAIR");
+ 		parseRetCode(&ManagerAsync::Observer::ReceivedCreateKeyPair);
+ 		break;
+ 
+ 	case LogicCommand::GET_CHAIN_CERT:
+ 	case LogicCommand::GET_CHAIN_ALIAS:
++		LogInfo("Parse LogicCommand::GET_CHAIN_CERT/ALIAS");
+ 		parseGetChainCertCommand();
+ 		break;
+ 
+ 	case LogicCommand::CREATE_SIGNATURE:
++		LogInfo("Parse LogicCommand::CREATE_SIGNATURE");
+ 		parseCreateSignatureCommand();
+ 		break;
+ 
+ 	case LogicCommand::VERIFY_SIGNATURE:
++		LogInfo("Parse LogicCommand::VERIFY_SIGNATURE");
+ 		parseRetCode(&ManagerAsync::Observer::ReceivedVerifySignature);
+ 		break;
+ 
+ 	case LogicCommand::SET_PERMISSION:
++		LogInfo("Parse LogicCommand::SET_PERMISSION");
+ 		parseRetCode(&ManagerAsync::Observer::ReceivedSetPermission);
+ 		break;
+ 
+@@ -125,15 +137,19 @@ void StorageReceiver::parseGetCommand()
+ 		return;
+ 	}
+ 
+-	if (dataType.isSymmetricKey())
++	if (dataType.isSymmetricKey()) {
+ 		m_observer->ReceivedKey(KeyAESImpl(rawData));
+-	else if (dataType.isKey())
++		LogInfo("ReceivedKey()");
++	} else if (dataType.isKey()) {
+ 		m_observer->ReceivedKey(KeyImpl(rawData));
+-	else if (dataType.isCertificate())
++		LogInfo("ReceivedKey()");
++	} else if (dataType.isCertificate()) {
+ 		m_observer->ReceivedCertificate(CertificateImpl(rawData, DataFormat::FORM_DER));
+-	else if (dataType.isBinaryData())
++		LogInfo("ReceivedCertificate()");
++	} else if (dataType.isBinaryData()) {
+ 		m_observer->ReceivedData(std::move(rawData));
+-	else
++		LogInfo("ReceivedData()");
++	} else
+ 		m_observer->ReceivedError(CKM_API_ERROR_BAD_RESPONSE);
+ }
+ 
+@@ -150,6 +166,7 @@ void StorageReceiver::parseGetPKCS12Command()
+ 	}
+ 
+ 	m_observer->ReceivedPKCS12(std::make_shared<PKCS12Impl>(std::move(gotPkcs)));
++	LogInfo("ReceivedPKCS12()");
+ }
+ 
+ void StorageReceiver::parseGetListCommand()
+@@ -171,13 +188,16 @@ void StorageReceiver::parseGetListCommand()
+ 	for (const auto &it : aliasInfoVector)
+ 		aliasVector.push_back(it.alias);
+ 
+-	if (dataType.isKey())
++	if (dataType.isKey()) {
+ 		m_observer->ReceivedKeyAliasVector(std::move(aliasVector));
+-	else if (dataType.isCertificate())
++		LogInfo("ReceivedKeyAliasVector()");
++	} else if (dataType.isCertificate()) {
+ 		m_observer->ReceivedCertificateAliasVector(std::move(aliasVector));
+-	else if (dataType.isBinaryData())
++		LogInfo("ReceivedCertificateAliasVector()");
++	} else if (dataType.isBinaryData()) {
+ 		m_observer->ReceivedDataAliasVector(std::move(aliasVector));
+-	else
++		LogInfo("ReceivedDataAliasVector()");
++	} else
+ 		m_observer->ReceivedError(CKM_API_ERROR_BAD_RESPONSE);
+ }
+ 
+@@ -193,13 +213,16 @@ void StorageReceiver::parseSaveCommand()
+ 		return;
+ 	}
+ 
+-	if (dataType.isKey())
++	if (dataType.isKey()) {
+ 		m_observer->ReceivedSaveKey();
+-	else if (dataType.isCertificate())
++		LogInfo("ReceivedSaveKey()");
++	} else if (dataType.isCertificate()) {
+ 		m_observer->ReceivedSaveCertificate();
+-	else if (dataType.isBinaryData())
++		LogInfo("ReceivedSaveCertificate()");
++	} else if (dataType.isBinaryData()) {
+ 		m_observer->ReceivedSaveData();
+-	else
++		LogInfo("ReceivedSaveData()");
++	} else
+ 		m_observer->ReceivedError(CKM_API_ERROR_BAD_RESPONSE);
+ }
+ 
+@@ -215,6 +238,7 @@ void StorageReceiver::parseSavePKCS12Command()
+ 	}
+ 
+ 	m_observer->ReceivedSavePKCS12();
++	LogInfo("ReceivedSavePKCS12()");
+ }
+ 
+ void StorageReceiver::parseRemoveCommand()
+@@ -229,6 +253,7 @@ void StorageReceiver::parseRemoveCommand()
+ 	}
+ 
+ 	m_observer->ReceivedRemovedAlias();
++	LogInfo("ReceivedRemovedAlias()");
+ }
+ 
+ void StorageReceiver::parseGetChainCertCommand()
+@@ -256,6 +281,7 @@ void StorageReceiver::parseGetChainCertCommand()
+ 	}
+ 
+ 	m_observer->ReceivedGetCertificateChain(std::move(certificateChainVector));
++	LogInfo("ReceivedGetCertificateChain()");
+ }
+ 
+ void StorageReceiver::parseCreateSignatureCommand()
+@@ -271,6 +297,7 @@ void StorageReceiver::parseCreateSignatureCommand()
+ 	}
+ 
+ 	m_observer->ReceivedCreateSignature(std::move(signature));
++	LogInfo("ReceivedCreateSignature()");
+ }
+ 
+ void StorageReceiver::parseSetPermission()
+@@ -285,6 +312,7 @@ void StorageReceiver::parseSetPermission()
+ 	}
+ 
+ 	m_observer->ReceivedSetPermission();
++	LogInfo("ReceivedSetPermission()");
+ }
+ 
+ void StorageReceiver::parseRetCode(ObserverCb callback)
+diff --git a/src/manager/client-capi/ckmc-manager.cpp b/src/manager/client-capi/ckmc-manager.cpp
+index 66a8e7d..c90ddbd 100644
+--- a/src/manager/client-capi/ckmc-manager.cpp
++++ b/src/manager/client-capi/ckmc-manager.cpp
+@@ -424,6 +424,7 @@ KEY_MANAGER_CAPI
+ int ckmc_save_key(const char *alias, const ckmc_key_s key,
+ 				  const ckmc_policy_s policy)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return save_key(alias, key, _toCkmPolicy(policy));
+ }
+ 
+@@ -431,6 +432,7 @@ KEY_MANAGER_CAPI
+ int ckmc_update_key(const char *alias, const ckmc_key_s key,
+ 				    const ckmc_policy_s policy)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return save_key(alias, key, _toCkmPolicy(policy, true));
+ }
+ 
+@@ -447,6 +449,8 @@ int ckmc_get_key(const char *alias, const char *password, ckmc_key_s **key)
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (alias == nullptr || key == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -474,13 +478,14 @@ int ckmc_get_key(const char *alias, const char *password, ckmc_key_s **key)
+ KEY_MANAGER_CAPI
+ int ckmc_get_key_alias_list(ckmc_alias_list_s **alias_list)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return get_alias_list(alias_list, &CKM::Manager::getKeyAliasVector);
+ }
+ 
+ KEY_MANAGER_CAPI
+ int ckmc_get_key_alias_info_list(ckmc_alias_info_list_s **alias_info_list)
+ {
+-
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return ckmc_generic_get_alias_info_list_helper(alias_info_list,
+ 			&CKM::Manager::getKeyAliasInfoVector);
+ }
+@@ -489,6 +494,7 @@ KEY_MANAGER_CAPI
+ int ckmc_save_cert(const char *alias, const ckmc_cert_s cert,
+ 				   const ckmc_policy_s policy)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return save_cert(alias, cert, _toCkmPolicy(policy));
+ }
+ 
+@@ -496,6 +502,7 @@ KEY_MANAGER_CAPI
+ int ckmc_update_cert(const char *alias, const ckmc_cert_s cert,
+ 					 const ckmc_policy_s policy)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return save_cert(alias, cert, _toCkmPolicy(policy, true));
+ }
+ 
+@@ -512,6 +519,8 @@ int ckmc_get_cert(const char *alias, const char *password, ckmc_cert_s **cert)
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	CKM::CertificateShPtr ckmCert;
+ 	int ret;
+ 
+@@ -536,12 +545,14 @@ int ckmc_get_cert(const char *alias, const char *password, ckmc_cert_s **cert)
+ KEY_MANAGER_CAPI
+ int ckmc_get_cert_alias_list(ckmc_alias_list_s **alias_list)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return get_alias_list(alias_list, &CKM::Manager::getCertificateAliasVector);
+ }
+ 
+ KEY_MANAGER_CAPI
+ int ckmc_get_cert_alias_info_list(ckmc_alias_info_list_s **alias_info_list)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return ckmc_generic_get_alias_info_list_helper(alias_info_list,
+ 			&CKM::Manager::getCertificateAliasInfoVector);
+ }
+@@ -550,6 +561,7 @@ KEY_MANAGER_CAPI
+ int ckmc_save_pkcs12(const char *alias, const ckmc_pkcs12_s *ppkcs,
+ 					 const ckmc_policy_s key_policy, const ckmc_policy_s cert_policy)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return save_pkcs12(alias, ppkcs, _toCkmPolicy(key_policy), _toCkmPolicy(cert_policy));
+ }
+ 
+@@ -557,6 +569,7 @@ KEY_MANAGER_CAPI
+ int ckmc_update_pkcs12(const char *alias, const ckmc_pkcs12_s *ppkcs,
+ 					   const ckmc_policy_s key_policy, const ckmc_policy_s cert_policy)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return save_pkcs12(alias,
+ 					   ppkcs,
+ 					   _toCkmPolicy(key_policy, true),
+@@ -569,6 +582,8 @@ int ckmc_get_pkcs12(const char *alias, const char *key_password,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (!alias || !pkcs12)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -639,6 +654,7 @@ KEY_MANAGER_CAPI
+ int ckmc_save_data(const char *alias, ckmc_raw_buffer_s data,
+ 				   const ckmc_policy_s policy)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return save_data(alias, data, _toCkmPolicy(policy));
+ }
+ 
+@@ -646,6 +662,7 @@ KEY_MANAGER_CAPI
+ int ckmc_update_data(const char *alias, ckmc_raw_buffer_s data,
+ 					 const ckmc_policy_s policy)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return save_data(alias, data, _toCkmPolicy(policy, true));
+ }
+ 
+@@ -663,6 +680,8 @@ int ckmc_get_data(const char *alias, const char *password,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (alias == nullptr || data == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -682,12 +701,14 @@ int ckmc_get_data(const char *alias, const char *password,
+ KEY_MANAGER_CAPI
+ int ckmc_get_data_alias_list(ckmc_alias_list_s **alias_list)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return get_alias_list(alias_list, &CKM::Manager::getDataAliasVector);
+ }
+ 
+ KEY_MANAGER_CAPI
+ int ckmc_get_data_alias_info_list(ckmc_alias_info_list_s **alias_info_list)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
+ 	return ckmc_generic_get_alias_info_list_helper(alias_info_list,
+ 			&CKM::Manager::getDataAliasInfoVector);
+ }
+@@ -701,6 +722,8 @@ int ckmc_create_key_pair_rsa(const size_t size,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	auto mgr = CKM::Manager::create();
+ 
+ 	if (private_key_alias == nullptr || public_key_alias == nullptr)
+@@ -725,6 +748,8 @@ int ckmc_create_key_pair_dsa(const size_t size,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (private_key_alias == nullptr || public_key_alias == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -748,6 +773,8 @@ int ckmc_create_key_pair_ecdsa(const ckmc_ec_type_e type,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (private_key_alias == nullptr || public_key_alias == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -769,6 +796,8 @@ int ckmc_create_key_aes(size_t size,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (key_alias == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -789,6 +818,8 @@ int ckmc_create_signature(const char *private_key_alias,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (private_key_alias == nullptr || signature == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -820,6 +851,8 @@ int ckmc_verify_signature(const char *public_key_alias,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (public_key_alias == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -847,6 +880,8 @@ int ckmc_get_cert_chain(const ckmc_cert_s *cert,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (cert == nullptr || cert->raw_cert == nullptr || cert->cert_size == 0 ||
+ 			cert_chain_list == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+@@ -876,6 +911,8 @@ int ckmc_get_cert_chain_with_alias(const ckmc_cert_s *cert,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (cert == nullptr || cert->raw_cert == nullptr || cert->cert_size == 0 ||
+ 			cert_chain_list == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+@@ -905,6 +942,8 @@ int ckmc_get_cert_chain_with_trustedcert(const ckmc_cert_s *cert,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (cert == nullptr || cert->raw_cert == nullptr || cert->cert_size == 0 ||
+ 			ppcert_chain_list == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+@@ -934,6 +973,8 @@ int ckmc_ocsp_check(const ckmc_cert_list_s *pcert_chain_list,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (pcert_chain_list == nullptr
+ 			|| pcert_chain_list->cert == nullptr
+ 			|| pcert_chain_list->cert->raw_cert == nullptr
+@@ -979,6 +1020,8 @@ int ckmc_set_permission(const char *alias, const char *accessor,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (!alias || !accessor)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -1011,6 +1054,8 @@ int ckmc_remove_alias(const char *alias)
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (!alias)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -1029,6 +1074,8 @@ int ckmc_encrypt_data(ckmc_param_list_h params,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	return _cryptoOperation(&CKM::Manager::encrypt,
+ 							params,
+ 							key_alias,
+@@ -1048,6 +1095,8 @@ int ckmc_decrypt_data(ckmc_param_list_h params,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	return _cryptoOperation(&CKM::Manager::decrypt,
+ 							params,
+ 							key_alias,
+@@ -1070,6 +1119,8 @@ int ckmc_key_derive(const ckmc_param_list_h params,
+ 
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	// params
+ 	const CKM::CryptoAlgorithm *ca = reinterpret_cast<const CKM::CryptoAlgorithm *>
+ 									 (params);
+@@ -1093,6 +1144,8 @@ int ckmc_import_wrapped_key(const ckmc_param_list_h params,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (params == nullptr ||
+ 		wrapping_key_alias == nullptr ||
+ 		alias == nullptr ||
+@@ -1128,6 +1181,8 @@ int ckmc_export_wrapped_key(const ckmc_param_list_h params,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (params == nullptr ||
+ 		wrapping_key_alias == nullptr ||
+ 		alias == nullptr ||
+@@ -1170,6 +1225,8 @@ int ckmc_get_backend_info(ckmc_backend_id_e backend, ckmc_backend_info_h* ppinfo
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (backend < CKMC_BACKEND_SW || backend > CKMC_BACKEND_TZ || ppinfo == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -1195,6 +1252,8 @@ int ckmc_cipher_initialize(ckmc_param_list_h params,
+                            bool encrypt,
+                            ckmc_cipher_ctx_h *context)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (params == nullptr || key_alias == nullptr || context == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -1236,6 +1295,8 @@ int ckmc_cipher_update(ckmc_cipher_ctx_h context,
+                        const ckmc_raw_buffer_s in,
+                        ckmc_raw_buffer_s **ppout)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (context == nullptr || ppout == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -1264,6 +1325,8 @@ int ckmc_cipher_finalize(ckmc_cipher_ctx_h context,
+                          const ckmc_raw_buffer_s *in,
+                          ckmc_raw_buffer_s **ppout)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (context == nullptr || ppout == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -1294,6 +1357,8 @@ int ckmc_cipher_finalize(ckmc_cipher_ctx_h context,
+ KEY_MANAGER_CAPI
+ void ckmc_cipher_free(ckmc_cipher_ctx_h context)
+ {
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (context == nullptr)
+ 		return;
+ 
+@@ -1323,6 +1388,8 @@ int ckmc_wrap_concatenated_data(const ckmc_param_list_h params,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (params == nullptr || wrapping_key_alias == nullptr ||
+ 		alias == nullptr || data == nullptr || ppwrapped_key == nullptr)
+ 			return CKMC_ERROR_INVALID_PARAMETER;
+@@ -1372,6 +1439,8 @@ int ckmc_unwrap_concatenated_data(const ckmc_param_list_h params,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (params == nullptr || wrapping_key_alias == nullptr ||
+ 		wrapped_key == nullptr ||
+ 		wrapped_key->raw_key == nullptr ||
+@@ -1423,6 +1492,8 @@ int ckmc_create_key_pair_kem(const ckmc_kem_type_e kem_type,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (private_key_alias == nullptr || public_key_alias == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+ 
+@@ -1447,6 +1518,8 @@ int ckmc_encapsulate_key(const ckmc_param_list_h params,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (params == nullptr || public_key_alias == nullptr ||
+ 		shared_secret_alias == nullptr || ppciphertext == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+@@ -1486,6 +1559,8 @@ int ckmc_decapsulate_key(const ckmc_param_list_h params,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (params == nullptr || private_key_alias == nullptr ||
+ 		shared_secret_alias == nullptr || ciphertext == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+@@ -1519,6 +1594,8 @@ int ckmc_key_derive_hybrid(const ckmc_param_list_h params,
+ {
+ 	EXCEPTION_GUARD_START_CAPI
+ 
++	LogInfo("KEY_MANAGER_CAPI " << __func__ << "()");
++
+ 	if (params == nullptr || first_secret_alias == nullptr ||
+ 		second_secret_alias == nullptr || new_key_alias == nullptr)
+ 		return CKMC_ERROR_INVALID_PARAMETER;
+diff --git a/src/manager/client/client-manager-impl.cpp b/src/manager/client/client-manager-impl.cpp
+index 30fd8ca..a4b445b 100644
+--- a/src/manager/client/client-manager-impl.cpp
++++ b/src/manager/client/client-manager-impl.cpp
+@@ -135,6 +135,8 @@ int Manager::Impl::saveBinaryData(
+ {
+ 	EXCEPTION_GUARD_START_CPPAPI
+ 
++	LogInfo("Request LogicCommand::SAVE, data type: " << static_cast<int>(dataType));
++
+ 	if (alias.empty() || rawData.empty())
+ 		return CKM_API_ERROR_INPUT_PARAM;
+ 
+@@ -191,6 +193,8 @@ int Manager::Impl::savePKCS12(
+ 
+ 	AliasSupport helper(alias);
+ 
++	LogInfo("Request LogicCommand::SAVE_PKCS12");
++
+ 	return Request(*this, LogicCommand::SAVE_PKCS12, m_storageConnection,
+ 			helper.getName(), helper.getOwner(), PKCS12Serializable(*pkcs.get()),
+ 			PolicySerializable(keyPolicy), PolicySerializable(certPolicy)
+@@ -217,6 +221,8 @@ int Manager::Impl::getPKCS12(const Alias &alias, const Password &keyPass,
+ 	int msgId = ++m_counter;
+ 	MessageBuffer recv;
+ 
++	LogInfo("Request LogicCommand::GET_PKCS12");
++
+ 	int retCode = doRequest(recv, m_storageConnection, LogicCommand::GET_PKCS12, msgId,
+ 			helper.getName(), helper.getOwner(), keyPass, certPass);
+ 
+@@ -247,6 +253,8 @@ int Manager::Impl::removeAlias(const Alias &alias)
+ 
+ 	AliasSupport helper(alias);
+ 
++	LogInfo("Request LogicCommand::REMOVE, alias to remove: " << helper.getName());
++
+ 	return Request(*this, LogicCommand::REMOVE, m_storageConnection,
+ 			helper.getName(), helper.getOwner()
+ 		).maybeDeserialize();
+@@ -268,6 +276,8 @@ int Manager::Impl::getBinaryData(
+ 
+ 	AliasSupport helper(alias);
+ 
++	LogInfo("Request LogicCommand::GET, send data type: " << static_cast<int>(sendDataType));
++
+ 	return Request(*this, LogicCommand::GET, m_storageConnection,
+ 			sendDataType, helper.getName(), helper.getOwner(), password
+ 		).maybeDeserialize(recvDataType, rawData);
+@@ -287,6 +297,8 @@ int Manager::Impl::getBinaryDataEncryptionStatus(const DataType sendDataType,
+ 	AliasSupport helper(alias);
+ 	DataType tmpDataType;
+ 
++	LogInfo("Request LogicCommand::GET_PROTECTION_STATUS");
++
+ 	int retCode = Request(*this, LogicCommand::GET_PROTECTION_STATUS, m_storageConnection,
+ 			sendDataType, helper.getName(), helper.getOwner()
+ 		).maybeDeserialize(tmpDataType, status);
+@@ -371,6 +383,9 @@ int Manager::Impl::getAliasInfoVectorHelper(DataType dataType, AliasInfoVector &
+ {
+ 	DataType tmpDataType;
+ 	AliasInfoSerializableVector aisv(aliasInfoVector);
++
++	LogInfo("Request LogicCommand::GET_LIST, data type: " << static_cast<int>(dataType));
++
+ 	return Request(*this,
+ 	               LogicCommand::GET_LIST,
+ 	               m_storageConnection,
+@@ -453,6 +468,8 @@ int Manager::Impl::createKeyPairRSA(
+ 	const Policy &policyPrivateKey,
+ 	const Policy &policyPublicKey)
+ {
++	LogInfo("RSA key pair size: " << size);
++
+ 	return this->createKeyPair(CKM::KeyType::KEY_RSA_PUBLIC, size, privateKeyAlias,
+ 							   publicKeyAlias, policyPrivateKey, policyPublicKey);
+ }
+@@ -464,6 +481,8 @@ int Manager::Impl::createKeyPairDSA(
+ 	const Policy &policyPrivateKey,
+ 	const Policy &policyPublicKey)
+ {
++	LogInfo("DSA key pair size: " << size);
++
+ 	return this->createKeyPair(CKM::KeyType::KEY_DSA_PUBLIC, size, privateKeyAlias,
+ 							   publicKeyAlias, policyPrivateKey, policyPublicKey);
+ }
+@@ -475,6 +494,8 @@ int Manager::Impl::createKeyPairECDSA(
+ 	const Policy &policyPrivateKey,
+ 	const Policy &policyPublicKey)
+ {
++	LogInfo("ECDSA key pair type: " << static_cast<int>(type));
++
+ 	return this->createKeyPair(CKM::KeyType::KEY_ECDSA_PUBLIC,
+ 							   static_cast<int>(type), privateKeyAlias, publicKeyAlias,
+ 							   policyPrivateKey, policyPublicKey);
+@@ -489,6 +510,8 @@ int Manager::Impl::createKeyAES(
+ 
+ 	AliasSupport aliasHelper(keyAlias);
+ 
++	LogInfo("Request LogicCommand::CREATE_KEY_AES, size: " << size);
++
+ 	return Request(*this, LogicCommand::CREATE_KEY_AES, m_storageConnection,
+ 			size, PolicySerializable(policyKey),
+ 			aliasHelper.getName(), aliasHelper.getOwner()
+@@ -504,6 +527,8 @@ int Manager::Impl::createKeyPairKEM(
+ 	const Policy &policyPrivateKey,
+ 	const Policy &policyPublicKey)
+ {
++	LogInfo("KEM key pair type: " << static_cast<int>(type));
++
+ 	return this->createKeyPair(CKM::KeyType::KEY_KEM_PUBLIC,
+ 							   static_cast<int>(type), privateKeyAlias, publicKeyAlias,
+ 							   policyPrivateKey, policyPublicKey);
+@@ -551,6 +576,8 @@ int Manager::Impl::createKeyPair(
+ 
+ 	EXCEPTION_GUARD_START_CPPAPI
+ 
++	LogInfo("Request LogicCommand::CREATE_KEY_PAIR, key type: " << static_cast<int>(key_type));
++
+ 	AliasSupport privateHelper(privateKeyAlias);
+ 	AliasSupport publicHelper(publicKeyAlias);
+ 	if (key_type == KeyType::KEY_KEM_PUBLIC ||  key_type == KeyType::KEY_KEM_PRIVATE) {
+@@ -599,6 +626,8 @@ int Manager::Impl::getCertificateChain(
+ 		trustedVector.push_back(e->getDER());
+ 	}
+ 
++	LogInfo("Request LogicCommand::GET_CHAIN_CERT");
++
+ 	return getCertChain(m_storageConnection, LogicCommand::GET_CHAIN_CERT, *this,
+ 	                    certificate, untrustedVector, trustedVector,
+ 	                    useTrustedSystemCertificates, certificateChainVector);
+@@ -627,6 +656,8 @@ int Manager::Impl::getCertificateChain(
+ 		trustedVector.push_back(std::make_pair(helper.getOwner(), helper.getName()));
+ 	}
+ 
++	LogInfo("Request LogicCommand::GET_CHAIN_ALIAS");
++
+ 	return getCertChain(m_storageConnection, LogicCommand::GET_CHAIN_ALIAS, *this,
+ 	                    certificate, untrustedVector, trustedVector,
+ 	                    useTrustedSystemCertificates, certificateChainVector);
+@@ -643,6 +674,8 @@ int Manager::Impl::createSignature(
+ 
+ 	AliasSupport helper(privateKeyAlias);
+ 
++	LogInfo("Request LogicCommand::CREATE_SIGNATURE");
++
+ 	return Request(*this, LogicCommand::CREATE_SIGNATURE, m_storageConnection,
+ 			helper.getName(), helper.getOwner(), password, message,
+ 			CryptoAlgorithmSerializable(cAlgorithm)
+@@ -662,6 +695,8 @@ int Manager::Impl::verifySignature(
+ 
+ 	AliasSupport helper(publicKeyOrCertAlias);
+ 
++	LogInfo("Request LogicCommand::VERIFY_SIGNATURE");
++
+ 	return Request(*this, LogicCommand::VERIFY_SIGNATURE, m_storageConnection,
+ 			helper.getName(), helper.getOwner(), password, message, signature,
+ 			CryptoAlgorithmSerializable(cAlg)
+@@ -707,6 +742,8 @@ int Manager::Impl::setPermission(const Alias &alias,
+ 
+ 	AliasSupport helper(alias);
+ 
++	LogInfo("Request LogicCommand::SET_PERMISSION");
++
+ 	return Request(*this, LogicCommand::SET_PERMISSION, m_storageConnection,
+ 			helper.getName(), helper.getOwner(), accessor, permissionMask
+ 		).maybeDeserialize();
+@@ -739,6 +776,8 @@ int Manager::Impl::encrypt(const CryptoAlgorithm &algo,
+ 						   const RawBuffer &plain,
+ 						   RawBuffer &encrypted)
+ {
++	LogInfo("EncryptionCommand::ENCRYPT");
++
+ 	return crypt(EncryptionCommand::ENCRYPT, algo, keyAlias, password, plain,
+ 				 encrypted);
+ }
+@@ -749,6 +788,8 @@ int Manager::Impl::decrypt(const CryptoAlgorithm &algo,
+ 						   const RawBuffer &encrypted,
+ 						   RawBuffer &decrypted)
+ {
++	LogInfo("EncryptionCommand::DECRYPT");
++
+ 	return crypt(EncryptionCommand::DECRYPT, algo, keyAlias, password, encrypted,
+ 				 decrypted);
+ }
+@@ -765,6 +806,8 @@ int Manager::Impl::deriveKey(const CryptoAlgorithm &algo,
+ 	AliasSupport newKey(newKeyAlias);
+ 	CryptoAlgorithmSerializable cas(algo);
+ 
++	LogInfo("Request LogicCommand::DERIVE");
++
+ 	return Request(*this, LogicCommand::DERIVE, m_storageConnection,
+ 			cas, secret.getName(), secret.getOwner(), secretPassword,
+ 			newKey.getName(), newKey.getOwner(), PolicySerializable(newKeyPolicy)
+@@ -789,6 +832,8 @@ int Manager::Impl::importWrappedKey(const CryptoAlgorithm &params,
+ 	AliasSupport wrapping_helper(wrappingKeyAlias);
+ 	AliasSupport helper(alias);
+ 
++	LogInfo("Request LogicCommand::IMPORT_WRAPPED_KEY, key type: " << static_cast<int>(keyType));
++
+ 	return Request(*this,
+ 		LogicCommand::IMPORT_WRAPPED_KEY,
+ 		m_storageConnection,
+@@ -820,6 +865,8 @@ int Manager::Impl::exportWrappedKey(const CryptoAlgorithm &params,
+ 	AliasSupport helper(alias);
+ 	DataType dataTypeKey;
+ 
++	LogInfo("Request LogicCommand::EXPORT_WRAPPED_KEY, key type: " << static_cast<int>(keyType));
++
+ 	int retCode = Request(*this,
+ 		LogicCommand::EXPORT_WRAPPED_KEY,
+ 		m_storageConnection,
+@@ -861,6 +908,8 @@ int Manager::Impl::wrapConcatenatedData(const CryptoAlgorithm &params,
+ 	AliasSupport wrappingAliasHelper(wrappingKeyAlias);
+ 	AliasSupport aliasHelper(alias);
+ 
++	LogInfo("Request LogicCommand::WRAP_CONCATENATED_DATA");
++
+ 	return Request(*this,
+ 		LogicCommand::WRAP_CONCATENATED_DATA,
+ 		m_extendedConnection,
+@@ -891,6 +940,8 @@ int Manager::Impl::unwrapConcatenatedData(const CryptoAlgorithm &params,
+ 	AliasSupport wrappingAliasHelper(wrappingKeyAlias);
+ 	AliasSupport aliasHelper(alias);
+ 
++	LogInfo("Request LogicCommand::UNWRAP_CONCATENATED_DATA");
++
+ 	return Request(*this,
+ 		LogicCommand::UNWRAP_CONCATENATED_DATA,
+ 		m_extendedConnection,
+@@ -920,6 +971,8 @@ int Manager::Impl::encapsulateKey(const CryptoAlgorithm &params,
+ 	AliasSupport keyAliasHelper(publicKeyAlias);
+ 	AliasSupport secretAliasHelper(sharedSecretAlias);
+ 
++	LogInfo("Request LogicCommand::ENCAPSULATE_KEY");
++
+ 	return Request(*this,
+ 		LogicCommand::ENCAPSULATE_KEY,
+ 		m_extendedConnection,
+@@ -947,6 +1000,8 @@ int Manager::Impl::decapsulateKey(const CryptoAlgorithm &params,
+ 	AliasSupport keyAliasHelper(privateKeyAlias);
+ 	AliasSupport secretAliasHelper(sharedSecretAlias);
+ 
++	LogInfo("Request LogicCommand::DECAPSULATE_KEY");
++
+ 	return Request(*this,
+ 		LogicCommand::DECAPSULATE_KEY,
+ 		m_extendedConnection,
+@@ -977,6 +1032,8 @@ int Manager::Impl::deriveHybrid(const CryptoAlgorithm &params,
+ 	AliasSupport secondSecretAliasHelper(secondSecretAlias);
+ 	AliasSupport newKeyAliasHelper(newKeyAlias);
+ 
++	LogInfo("Request LogicCommand::DERIVE_HYBRID");
++
+ 	return Request(*this,
+ 		LogicCommand::DERIVE_HYBRID,
+ 		m_extendedConnection,
+@@ -1006,6 +1063,8 @@ int Manager::Impl::initializeCipher(
+ 
+ 	AliasSupport helper(keyAlias);
+ 
++	LogInfo("Request EncryptionCommand::INITIALIZE_CIPHER");
++
+ 	return Request(*this,
+ 		EncryptionCommand::INITIALIZE_CIPHER,
+ 		m_encryptionConnection,
+@@ -1024,6 +1083,8 @@ int Manager::Impl::updateCipher(int requestId, const RawBuffer &in, RawBuffer &o
+ {
+ 	EXCEPTION_GUARD_START_CPPAPI
+ 
++	LogInfo("Request EncryptionCommand::UPDATE_CIPHER");
++
+ 	return Request(*this,
+ 		EncryptionCommand::UPDATE_CIPHER,
+ 		m_encryptionConnection,
+@@ -1038,6 +1099,8 @@ int Manager::Impl::finalizeCipher(int requestId, const RawBuffer &in, RawBuffer
+ {
+ 	EXCEPTION_GUARD_START_CPPAPI
+ 
++	LogInfo("Request EncryptionCommand::FINALIZE_CIPHER");
++
+ 	return Request(*this,
+ 		EncryptionCommand::FINALIZE_CIPHER,
+ 		m_encryptionConnection,
+@@ -1052,6 +1115,8 @@ int Manager::Impl::getBackendInfo(BackendId backend, BackendInfo& info)
+ {
+ 	EXCEPTION_GUARD_START_CPPAPI
+ 
++	LogInfo("Request LogicCommand::GET_BACKEND_INFO");
++
+ 	BackendInfoSerializable bis(info);
+ 	return Request(*this,
+ 		LogicCommand::GET_BACKEND_INFO,
+diff --git a/src/manager/crypto/tz-backend/internals.cpp b/src/manager/crypto/tz-backend/internals.cpp
+index 2a892b4..82af709 100644
+--- a/src/manager/crypto/tz-backend/internals.cpp
++++ b/src/manager/crypto/tz-backend/internals.cpp
+@@ -334,7 +334,7 @@ void decompose(const CryptoAlgorithm &alg,
+ 			alg.getParam(ParamName::ED_CTR_LEN, ctrLenOrTagSizeBits);
+ 			// counter length is in bits
+ 			if (ctrLenOrTagSizeBits != Params::DEFAULT_AES_IV_LEN * 8) {
+-				LogError("CTR length invalid: " << std::to_string(ctrLenOrTagSizeBits));
++				LogError("CTR length invalid: " << ctrLenOrTagSizeBits);
+ 				ThrowErr(Exc::Crypto::InputParam, "Invalid CTR length");
+ 			}
+ 			break;
+@@ -368,9 +368,14 @@ RawBuffer generateIV()
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 
+ 	security_keys_data_ptr out;
++
++	LogInfo("hal_security_keys_create_iv() -> enter");
++
+ 	int error = hal_security_keys_create_iv(ctx, out.Get());
+ 	ThrowWhenHalError(error, "Failed generating IV");
+ 
++	LogInfo("hal_security_keys_create_iv() -> exit");
++
+ 	return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ }
+ 
+@@ -391,19 +396,28 @@ void generateSKey(const CryptoAlgorithm &alg,
+ 		}
+ 
+ 		RawBuffer pwdBuf(pwd.begin(), pwd.end());
++
++		LogInfo("hal_security_keys_create_key_aes() -> enter");
++
+ 		int error = hal_security_keys_create_key_aes(ctx, keyBits,
+ 			convertToHalData(hash), convertToHalPwdIv(pwdBuf, iv),
+ 			halTag.Get());
+ 
+ 		ThrowWhenHalError(error, "Failed generating symmetric key with password");
++		LogInfo("hal_security_keys_create_key_aes() -> exit");
++
+ 		tag.assign(halTag.GetBuffer(), halTag.GetBuffer() + halTag.GetLength());
+ 	} else {
+ 		RawBuffer pwdEmpty;
++
++		LogInfo("hal_security_keys_create_key_aes() -> enter");
++
+ 		int error = hal_security_keys_create_key_aes(ctx, keyBits,
+ 			convertToHalData(hash), convertToHalPwdIv(pwdEmpty, iv),
+ 			halTag.Get());
+ 
+ 		ThrowWhenHalError(error, "Failed generating symmetric key");
++		LogInfo("hal_security_keys_create_key_aes() -> exit");
+ 	}
+ }
+ 
+@@ -434,12 +448,16 @@ AlgoType generateAKey(const CryptoAlgorithm &alg,
+ 	switch (keyType) {
+ 		case AlgoType::RSA_GEN: {
+ 			int keyBits = unpack<int>(alg, ParamName::GEN_KEY_LEN);
++
++			LogInfo("hal_security_keys_create_key_pair_rsa() -> enter");
++
+ 			int error = hal_security_keys_create_key_pair_rsa(ctx, keyBits,
+ 				convertToHalData(hashPriv), convertToHalPwdIv(privPwdBuf, privPwdIv),
+ 				convertToHalData(hashPub), convertToHalPwdIv(pubPwdBuf, pubPwdIv),
+ 				halPrivTag.Get(), halPubTag.Get());
+ 
+ 			ThrowWhenHalError(error, "Failed generating RSA keys");
++			LogInfo("hal_security_keys_create_key_pair_rsa() -> exit");
+ 
+ 			pubTag.assign(halPubTag.GetBuffer(), halPubTag.GetBuffer() + halPubTag.GetLength());
+ 			privTag.assign(halPrivTag.GetBuffer(), halPrivTag.GetBuffer() + halPrivTag.GetLength());
+@@ -451,6 +469,9 @@ AlgoType generateAKey(const CryptoAlgorithm &alg,
+ 			RawBuffer subprime;
+ 			RawBuffer base;
+ 			generateDSAParams(keyBits, prime, subprime, base);
++
++			LogInfo("hal_security_keys_create_key_pair_dsa() -> enter");
++
+ 			int error = hal_security_keys_create_key_pair_dsa(ctx, keyBits,
+ 				convertToHalData(prime), convertToHalData(subprime), convertToHalData(base),
+ 				convertToHalData(hashPriv), convertToHalPwdIv(privPwdBuf, privPwdIv),
+@@ -458,6 +479,7 @@ AlgoType generateAKey(const CryptoAlgorithm &alg,
+ 				halPrivTag.Get(), halPubTag.Get());
+ 
+ 			ThrowWhenHalError(error, "Failed generating DSA keys");
++			LogInfo("hal_security_keys_create_key_pair_dsa() -> exit");
+ 
+ 			pubTag.assign(halPubTag.GetBuffer(), halPubTag.GetBuffer() + halPubTag.GetLength());
+ 			privTag.assign(halPrivTag.GetBuffer(), halPrivTag.GetBuffer() + halPrivTag.GetLength());
+@@ -465,12 +487,16 @@ AlgoType generateAKey(const CryptoAlgorithm &alg,
+ 		}
+ 		case AlgoType::ECDSA_GEN: {
+ 			CKM::ElipticCurve ec = unpack<CKM::ElipticCurve>(alg, ParamName::GEN_EC);
++
++			LogInfo("hal_security_keys_create_key_pair_ecdsa() -> enter");
++
+ 			int error = hal_security_keys_create_key_pair_ecdsa(ctx, convertToHalEcType(ec),
+ 				convertToHalData(hashPriv), convertToHalPwdIv(privPwdBuf, privPwdIv),
+ 				convertToHalData(hashPub), convertToHalPwdIv(pubPwdBuf, pubPwdIv),
+ 				halPrivTag.Get(), halPubTag.Get());
+ 
+ 			ThrowWhenHalError(error, "Failed generating ECDSA keys");
++			LogInfo("hal_security_keys_create_key_pair_ecdsa() -> exit");
+ 
+ 			pubTag.assign(halPubTag.GetBuffer(), halPubTag.GetBuffer() + halPubTag.GetLength());
+ 			privTag.assign(halPrivTag.GetBuffer(), halPrivTag.GetBuffer() + halPrivTag.GetLength());
+@@ -478,12 +504,16 @@ AlgoType generateAKey(const CryptoAlgorithm &alg,
+ 		}
+ 		case AlgoType::KEM_GEN: {
+ 			CKM::KemType kt = unpack<CKM::KemType>(alg, ParamName::GEN_KEM_TYPE);
++
++			LogInfo("hal_security_keys_create_key_pair_kem() -> enter");
++
+ 			int error = hal_security_keys_create_key_pair_kem(ctx, convertToHalKemType(kt),
+ 				convertToHalData(hashPriv), convertToHalPwdIv(privPwdBuf, privPwdIv),
+ 				convertToHalData(hashPub), convertToHalPwdIv(pubPwdBuf, pubPwdIv),
+ 				halPrivTag.Get(), halPubTag.Get());
+ 
+ 			ThrowWhenHalError(error, "Failed generating KEM keys");
++			LogInfo("hal_security_keys_create_key_pair_kem() -> exit");
+ 
+ 			pubTag.assign(halPubTag.GetBuffer(), halPubTag.GetBuffer() + halPubTag.GetLength());
+ 			privTag.assign(halPrivTag.GetBuffer(), halPrivTag.GetBuffer() + halPrivTag.GetLength());
+@@ -501,8 +531,12 @@ AlgoType generateAKey(const CryptoAlgorithm &alg,
+ void destroyKey(const RawBuffer &keyId)
+ {
+ 	auto ctx = HalContext::Instance().GetHalContext();
++
++	LogInfo("hal_security_keys_destroy_key() -> enter");
++
+ 	int error = hal_security_keys_destroy_key(ctx, convertToHalData(keyId));
+ 	ThrowWhenHalError(error, "Failed destroying key");
++	LogInfo("hal_security_keys_destroy_key() -> exit");
+ }
+ 
+ void importData(const Data &data,
+@@ -516,12 +550,17 @@ void importData(const Data &data,
+ 
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr halTag;
++
++	LogInfo("hal_security_keys_import_data() -> enter");
++
+ 	int error = hal_security_keys_import_data(ctx, convertToHalData(hash),
+ 		convertToHalPwdIv(pwdBuf, pwdIV), convertToHalDataType(data.type),
+ 		convertToHalData(data.data), convertToHalData(encData.iv),
+ 		convertToHalData(encData.tag), halTag.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed importing data");
++	LogInfo("hal_security_keys_import_data() -> exit");
++
+ 	tag.assign(halTag.GetBuffer(), halTag.GetBuffer() + halTag.GetLength());
+ }
+ 
+@@ -545,6 +584,9 @@ void importWrappedKey(const RawBuffer &wrappingKeyId,
+ 
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr tag;
++
++	LogInfo("hal_security_keys_import_wrapped_key() -> enter");
++
+ 	int error = hal_security_keys_import_wrapped_key(ctx,
+ 		convertToHalAlgoType(algo), convertToHalHashType(hash),
+ 		convertToHalData(iv), convertToHalData(aad), ctrLenOrTagSizeBits,
+@@ -554,6 +596,8 @@ void importWrappedKey(const RawBuffer &wrappingKeyId,
+ 		convertToHalDataType(encryptedKey.type), tag.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed importing wrapped key");
++	LogInfo("hal_security_keys_import_wrapped_key() -> exit");
++
+ 	encryptedKeyTag.assign(tag.GetBuffer(), tag.GetBuffer() + tag.GetLength());
+ }
+ 
+@@ -573,6 +617,9 @@ RawBuffer exportWrappedKey(const RawBuffer &wrappingKeyId,
+ 
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr out;
++
++	LogInfo("hal_security_keys_export_wrapped_key() -> enter");
++
+ 	int error = hal_security_keys_export_wrapped_key(ctx,
+ 		convertToHalAlgoType(algo), convertToHalHashType(hash),
+ 		convertToHalData(iv), convertToHalData(aad), ctrLenOrTagSizeBits,
+@@ -581,6 +628,8 @@ RawBuffer exportWrappedKey(const RawBuffer &wrappingKeyId,
+ 		convertToHalDataType(keyToWrapType), out.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed exporting wrapped key");
++	LogInfo("hal_security_keys_export_wrapped_key() -> exit");
++
+ 	return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ }
+ 
+@@ -597,6 +646,9 @@ RawBuffer wrapConcatenatedData(const RawBuffer &wrappingKeyId,
+ 
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr out;
++
++	LogInfo("hal_security_keys_wrap_concatenated_data() -> enter");
++
+ 	int error = hal_security_keys_wrap_concatenated_data(ctx,
+ 		convertToHalAlgoType(algo), convertToHalHashType(hash),
+ 		convertToHalData(wrappingKeyId), convertToHalPwdIvTag(wrappingKeyPwd),
+@@ -604,6 +656,8 @@ RawBuffer wrapConcatenatedData(const RawBuffer &wrappingKeyId,
+ 		convertToHalData(userData), out.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed wrapping concatenated data");
++	LogInfo("hal_security_keys_wrap_concatenated_data() -> exit");
++
+ 	return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ }
+ 
+@@ -626,6 +680,9 @@ RawBuffer unwrapConcatenatedData(const RawBuffer &wrappingKeyId,
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr tag;
+ 	security_keys_data_ptr out;
++
++	LogInfo("hal_security_keys_unwrap_concatenated_data() -> enter");
++
+ 	int error = hal_security_keys_unwrap_concatenated_data(ctx,
+ 		convertToHalAlgoType(algo), convertToHalHashType(hash),
+ 		convertToHalData(wrappingKeyId), convertToHalPwdIvTag(wrappingKeyPwd),
+@@ -635,6 +692,8 @@ RawBuffer unwrapConcatenatedData(const RawBuffer &wrappingKeyId,
+ 		out.Get(), tag.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed unwrapping concatenated data");
++	LogInfo("hal_security_keys_unwrap_concatenated_data() -> exit");
++
+ 	encryptedKeyTag.assign(tag.GetBuffer(), tag.GetBuffer() + tag.GetLength());
+ 	return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ }
+@@ -653,12 +712,17 @@ RawBuffer encapsulateKey(const RawBuffer &publicKeyId,
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr tag;
+ 	security_keys_data_ptr out;
++
++	LogInfo("hal_security_keys_encapsulate_key() -> enter");
++
+ 	int error = hal_security_keys_encapsulate_key(ctx, convertToHalKemType(kt),
+ 		convertToHalData(publicKeyId), convertToHalPwdIvTag(publicKeyPwd),
+ 		convertToHalData(sharedSecretId), convertToHalPwdIv(sharedSecretPwdBuf, sharedSecretIV),
+ 		out.Get(), tag.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed encapsulating key");
++	LogInfo("hal_security_keys_encapsulate_key() -> exit");
++
+ 	sharedSecretTag.assign(tag.GetBuffer(), tag.GetBuffer() + tag.GetLength());
+ 	return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ }
+@@ -677,12 +741,17 @@ void decapsulateKey(const RawBuffer &privateKeyId,
+ 
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr tag;
++
++	LogInfo("hal_security_keys_decapsulate_key() -> enter");
++
+ 	int error = hal_security_keys_decapsulate_key(ctx, convertToHalKemType(kt),
+ 		convertToHalData(privateKeyId), convertToHalPwdIvTag(privateKeyPwd),
+ 		convertToHalData(sharedSecretId), convertToHalPwdIv(sharedSecretPwdBuf, sharedSecretIV),
+ 		convertToHalData(ciphertext), tag.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed decapsulating key");
++	LogInfo("hal_security_keys_decapsulate_key() -> exit");
++
+ 	sharedSecretTag.assign(tag.GetBuffer(), tag.GetBuffer() + tag.GetLength());
+ }
+ 
+@@ -692,19 +761,29 @@ RawBuffer getData(const RawBuffer &dataId,
+ {
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr out;
++
++	LogInfo("hal_security_keys_export_data() -> enter");
++
+ 	int error = hal_security_keys_export_data(ctx,
+ 		convertToHalData(dataId), convertToHalPwdIvTag(pwd),
+ 		convertToHalDataType(type), out.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed getting data");
++	LogInfo("hal_security_keys_export_data() -> exit");
++
+ 	return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ }
+ 
+ void destroyData(const RawBuffer &dataId)
+ {
+ 	auto ctx = HalContext::Instance().GetHalContext();
++
++	LogInfo("hal_security_keys_destroy_data() -> enter");
++
+ 	int error = hal_security_keys_destroy_data(ctx, convertToHalData(dataId));
++
+ 	ThrowWhenHalError(error, "Failed destroying data");
++	LogInfo("hal_security_keys_destroy_data() -> exit");
+ }
+ 
+ BufferPair encryptDataAesGcm(const RawBuffer &keyId,
+@@ -716,6 +795,8 @@ BufferPair encryptDataAesGcm(const RawBuffer &keyId,
+ {
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 
++	LogInfo("hal_security_keys_encrypt_data_auth() -> enter");
++
+ 	security_keys_data_ptr out;
+ 	security_keys_data_ptr halTag;
+ 	int error = hal_security_keys_encrypt_data_auth(ctx,
+@@ -724,6 +805,8 @@ BufferPair encryptDataAesGcm(const RawBuffer &keyId,
+ 		tagSize, halTag.Get(), out.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed authenticated encryption");
++	LogInfo("hal_security_keys_encrypt_data_auth() -> exit");
++
+ 	RawBuffer encrypted(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ 	RawBuffer tag(halTag.GetBuffer(), halTag.GetBuffer() + halTag.GetLength());
+ 
+@@ -753,6 +836,8 @@ RawBuffer decryptDataAesGcm(const RawBuffer &keyId,
+ {
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 
++	LogInfo("hal_security_keys_decrypt_data_auth() -> enter");
++
+ 	security_keys_data_ptr out;
+ 	int error = hal_security_keys_decrypt_data_auth(ctx,
+ 		convertToHalData(keyId), convertToHalPwdIvTag(pwd),
+@@ -760,6 +845,8 @@ RawBuffer decryptDataAesGcm(const RawBuffer &keyId,
+ 		tagSizeBits, convertToHalData(tag), out.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed authenticated decryption");
++	LogInfo("hal_security_keys_decrypt_data_auth() -> exit");
++
+ 	return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ }
+ 
+@@ -801,7 +888,7 @@ RawBuffer symmetricEncrypt(const RawBuffer &keyId,
+ 			alg.getParam(ParamName::ED_CTR_LEN, ctrLen);
+ 			// counter length is in bits
+ 			if (ctrLen != Params::DEFAULT_AES_IV_LEN * 8) {
+-				LogError("CTR length invalid: " << std::to_string(ctrLen));
++				LogError("CTR length invalid: " << ctrLen);
+ 				ThrowErr(Exc::Crypto::InputParam, "Invalid CTR length");
+ 			}
+ 			// no break here, we still need to slide down to executeCrypt
+@@ -811,6 +898,9 @@ RawBuffer symmetricEncrypt(const RawBuffer &keyId,
+ 		case AlgoType::AES_CFB: {
+ 			auto ctx = HalContext::Instance().GetHalContext();
+ 			security_keys_data_ptr out;
++
++			LogInfo("hal_security_keys_encrypt_data() -> enter");
++
+ 			int error = hal_security_keys_encrypt_data(ctx,
+ 				convertToHalAlgoType(algo), convertToHalHashType(hash),
+ 				convertToHalPaddingType(padding), convertToHalData(keyId),
+@@ -818,6 +908,8 @@ RawBuffer symmetricEncrypt(const RawBuffer &keyId,
+ 				convertToHalData(iv), out.Get());
+ 
+ 			ThrowWhenHalError(error, "Failed symmetric encrypt");
++			LogInfo("hal_security_keys_encrypt_data() -> exit");
++
+ 			return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ 		}
+ 		case AlgoType::AES_GCM: {
+@@ -857,7 +949,7 @@ RawBuffer symmetricDecrypt(const RawBuffer &keyId,
+ 			alg.getParam(ParamName::ED_CTR_LEN, ctrLen);
+ 			// counter length is in bits
+ 			if (ctrLen != Params::DEFAULT_AES_IV_LEN * 8) {
+-				LogError("CTR length invalid: " << std::to_string(ctrLen));
++				LogError("CTR length invalid: " << ctrLen);
+ 				ThrowErr(Exc::Crypto::InputParam, "Invalid CTR length");
+ 			}
+ 			// no break here, we still need to slide down to executeCrypt
+@@ -867,6 +959,9 @@ RawBuffer symmetricDecrypt(const RawBuffer &keyId,
+ 		case AlgoType::AES_CFB: {
+ 			auto ctx = HalContext::Instance().GetHalContext();
+ 			security_keys_data_ptr out;
++
++			LogInfo("hal_security_keys_decrypt_data() -> enter");
++
+ 			int error = hal_security_keys_decrypt_data(ctx,
+ 				convertToHalAlgoType(algo), convertToHalHashType(hash),
+ 				convertToHalPaddingType(padding), convertToHalData(keyId),
+@@ -874,6 +969,8 @@ RawBuffer symmetricDecrypt(const RawBuffer &keyId,
+ 				convertToHalData(iv), out.Get());
+ 
+ 			ThrowWhenHalError(error, "Failed symmetric decrypt");
++			LogInfo("hal_security_keys_decrypt_data() -> exit");
++
+ 			return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ 		}
+ 		case AlgoType::AES_GCM: {
+@@ -913,6 +1010,8 @@ RawBuffer asymmetricEncrypt(const RawBuffer &keyId,
+ 		case AlgoType::RSA_OAEP: {
+ 			auto ctx = HalContext::Instance().GetHalContext();
+ 
++			LogInfo("hal_security_keys_encrypt_data() -> enter");
++
+ 			security_keys_data_ptr out;
+ 			RawBuffer ivEmpty;
+ 			int error = hal_security_keys_encrypt_data(ctx,
+@@ -922,6 +1021,8 @@ RawBuffer asymmetricEncrypt(const RawBuffer &keyId,
+ 				convertToHalData(ivEmpty), out.Get());
+ 
+ 			ThrowWhenHalError(error, "Failed asymmetric encrypt");
++			LogInfo("hal_security_keys_encrypt_data() -> exit");
++
+ 			return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ 		}
+ 		default:
+@@ -949,6 +1050,9 @@ RawBuffer asymmetricDecrypt(const RawBuffer &keyId,
+ 
+ 			security_keys_data_ptr out;
+ 			RawBuffer ivEmpty;
++
++			LogInfo("hal_security_keys_decrypt_data() -> enter");
++
+ 			int error = hal_security_keys_decrypt_data(ctx,
+ 				convertToHalAlgoType(algo), convertToHalHashType(hash),
+ 				padding, convertToHalData(keyId),
+@@ -956,6 +1060,8 @@ RawBuffer asymmetricDecrypt(const RawBuffer &keyId,
+ 				convertToHalData(ivEmpty), out.Get());
+ 
+ 			ThrowWhenHalError(error, "Failed asymmetric decrypt");
++			LogInfo("hal_security_keys_decrypt_data() -> exit");
++
+ 			return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ 		}
+ 		default:
+@@ -983,12 +1089,17 @@ uint32_t initCipher(const RawBuffer &keyId,
+ 			hal_security_keys_cipher_context_t cipherCtx;
+ 
+ 			auto ctx = HalContext::Instance().GetHalContext();
++
++			LogInfo("hal_security_keys_cipher_initialize() -> enter");
++
+ 			int error = hal_security_keys_cipher_initialize(ctx, encrypt,
+ 				convertToHalData(keyId), convertToHalPwdIvTag(pwd),
+ 				convertToHalData(iv), convertToHalData(aad),
+ 				tagSizeBits, &cipherCtx);
+ 
+ 			ThrowWhenHalError(error, "Failed initializing cipher");
++			LogInfo("hal_security_keys_cipher_initialize() -> exit");
++
+ 			return cipherCtx;
+ 		}
+ 		case AlgoType::AES_CBC:
+@@ -1006,20 +1117,29 @@ uint32_t initCipher(const RawBuffer &keyId,
+ void addAAD(uint32_t opId, const RawBuffer &aad)
+ {
+ 	auto ctx = HalContext::Instance().GetHalContext();
++
++	LogInfo("hal_security_keys_cipher_add_aad() -> enter");
++
+ 	int error = hal_security_keys_cipher_add_aad(ctx,
+ 		static_cast<unsigned int>(opId), convertToHalData(aad));
+ 
+ 	ThrowWhenHalError(error, "Failed adding AAD");
++	LogInfo("hal_security_keys_cipher_add_aad() -> exit");
+ }
+ 
+ RawBuffer updateCipher(uint32_t opId, const RawBuffer &data)
+ {
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr out;
++
++	LogInfo("hal_security_keys_cipher_update() -> enter");
++
+ 	int error = hal_security_keys_cipher_update(ctx,
+ 		static_cast<hal_security_keys_cipher_context_t>(opId), convertToHalData(data), out.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed cipher update");
++	LogInfo("hal_security_keys_cipher_update() -> exit");
++
+ 	return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ }
+ 
+@@ -1027,18 +1147,28 @@ RawBuffer finalizeCipher(uint32_t opId, const RawBuffer &data)
+ {
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr out;
++
++	LogInfo("hal_security_keys_cipher_finalize() -> enter");
++
+ 	int error = hal_security_keys_cipher_finalize(ctx,
+ 		static_cast<hal_security_keys_cipher_context_t>(opId), convertToHalData(data), out.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed cipher finalize");
++	LogInfo("hal_security_keys_cipher_finalize() -> exit");
++
+ 	return RawBuffer(out.GetBuffer(), out.GetBuffer() + out.GetLength());
+ }
+ 
+ void cleanupCipher(uint32_t opId)
+ {
+ 	auto ctx = HalContext::Instance().GetHalContext();
++
++	LogInfo("hal_security_keys_cipher_free() -> enter");
++
+ 	int error = hal_security_keys_cipher_free(ctx, static_cast<hal_security_keys_cipher_context_t>(opId));
++
+ 	ThrowWhenHalError(error, "Failed cipher cleanup");
++	LogInfo("hal_security_keys_cipher_free() -> exit");
+ }
+ 
+ RawBuffer sign(const RawBuffer &pkeyId,
+@@ -1060,12 +1190,17 @@ RawBuffer sign(const RawBuffer &pkeyId,
+ 
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 	security_keys_data_ptr sign;
++
++	LogInfo("hal_security_keys_create_signature() -> enter");
++
+ 	int error = hal_security_keys_create_signature(ctx,
+ 		convertToHalAlgoType(algo), convertToHalHashType(hash),
+ 		convertToHalData(pkeyId), convertToHalPwdIvTag(pwd),
+ 		convertToHalData(message), sign.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed creating signature");
++	LogInfo("hal_security_keys_create_signature() -> exit");
++
+ 	return RawBuffer(sign.GetBuffer(), sign.GetBuffer() + sign.GetLength());
+ }
+ 
+@@ -1088,11 +1223,16 @@ int verify(const RawBuffer &pkeyId,
+ 		ThrowErr(Exc::Crypto::InputParam, "Only PKCS1 padding is supported");
+ 
+ 	auto ctx = HalContext::Instance().GetHalContext();
++
++	LogInfo("hal_security_keys_verify_signature() -> enter");
++
+ 	int error = hal_security_keys_verify_signature(ctx, convertToHalAlgoType(algo),
+ 		convertToHalHashType(hash), convertToHalData(pkeyId), convertToHalPwdIvTag(pwd),
+ 		convertToHalData(message), convertToHalData(signature));
+ 
+ 	ThrowWhenHalError(error, "Failed verify signature");
++	LogInfo("hal_security_keys_verify_signature() -> exit");
++
+ 	return error == HAL_SECURITY_KEYS_ERROR_VERIFICATION_FAILED ?
+ 		CKM_API_ERROR_VERIFICATION_FAILED : CKM_API_SUCCESS;
+ }
+@@ -1155,6 +1295,8 @@ void deriveECDH(const RawBuffer &prvKeyId,
+ 
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 
++	LogInfo("hal_security_keys_derive_ecdh() -> enter");
++
+ 	security_keys_data_ptr tag;
+ 	int error = hal_security_keys_derive_ecdh(ctx, ec,
+ 		convertToHalData(xBuf), convertToHalData(yBuf),
+@@ -1163,6 +1305,8 @@ void deriveECDH(const RawBuffer &prvKeyId,
+ 		tag.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed deriving ECDH");
++	LogInfo("hal_security_keys_derive_ecdh() -> exit");
++
+ 	secretTag.assign(tag.GetBuffer(), tag.GetBuffer() + tag.GetLength());
+ }
+ 
+@@ -1203,12 +1347,17 @@ void deriveKBKDF(const RawBuffer &secretId,
+ 		counterLocation, rlenBits, llenBits, noSeparator);
+ 
+ 	security_keys_data_ptr tag;
++
++	LogInfo("hal_security_keys_derive_kbkdf() -> enter");
++
+ 	int error = hal_security_keys_derive_kbkdf(ctx, params,
+ 		convertToHalData(secretId), convertToHalPwdIvTag(secretPwd),
+ 		convertToHalData(keyHash), convertToHalPwdIv(keyPwdBuf, keyPwdIV),
+ 		tag.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed deriving KBKDF");
++	LogInfo("hal_security_keys_derive_kbkdf() -> exit");
++
+ 	keyTag.assign(tag.GetBuffer(), tag.GetBuffer() + tag.GetLength());
+ }
+ 
+@@ -1251,6 +1400,9 @@ void deriveHybridKBKDF(const RawBuffer &firstSecretId,
+ 		counterLocation, rlenBits, llenBits, noSeparator);
+ 
+ 	security_keys_data_ptr tag;
++
++	LogInfo("hal_security_keys_derive_hybrid_kbkdf() -> enter");
++
+ 	int error = hal_security_keys_derive_hybrid_kbkdf(ctx, params,
+ 		convertToHalData(firstSecretId), convertToHalPwdIvTag(firstSecretPwd),
+ 		convertToHalData(secondSecretId), convertToHalPwdIvTag(secondSecretPwd),
+@@ -1258,6 +1410,8 @@ void deriveHybridKBKDF(const RawBuffer &firstSecretId,
+ 		tag.Get());
+ 
+ 	ThrowWhenHalError(error, "Failed deriving hybrid KBKDF");
++	LogInfo("hal_security_keys_derive_hybrid_kbkdf() -> exit");
++
+ 	keyTag.assign(tag.GetBuffer(), tag.GetBuffer() + tag.GetLength());
+ }
+ 
+@@ -1266,8 +1420,13 @@ size_t maxChunkSize()
+ 	auto ctx = HalContext::Instance().GetHalContext();
+ 
+ 	size_t size;
++
++	LogInfo("hal_security_keys_get_max_chunk_size() -> enter");
++
+ 	int error = hal_security_keys_get_max_chunk_size(ctx, &size);
++
+ 	ThrowWhenHalError(error, "Failed getting max chunk size");
++	LogInfo("hal_security_keys_get_max_chunk_size() -> exit");
+ 
+ 	return size;
+ }
+diff --git a/src/manager/dpl/log/include/dpl/log/log.h b/src/manager/dpl/log/include/dpl/log/log.h
+index 959fd00..8e07c54 100644
+--- a/src/manager/dpl/log/include/dpl/log/log.h
++++ b/src/manager/dpl/log/include/dpl/log/log.h
+@@ -161,17 +161,17 @@ typedef Singleton<LogSystem> LogSystemSingleton;
+ 		}                                                                           \
+ 	} while (false)
+ 
+-/* Errors must be always logged. */
++/* Errors and informations must be always logged. */
+ #define  LogError(message) \
+ 	DPL_MACRO_FOR_LOGGING(message, CKM::Log::AbstractLogProvider::LogLevel::Error)
+ #define  LogErrorPosition(message, file, line, function) \
+ 	DPL_MACRO_FOR_LOGGING_POSITION(message, CKM::Log::AbstractLogProvider::LogLevel::Error, file, line, function)
++#define LogInfo(message) \
++	DPL_MACRO_FOR_LOGGING(message, CKM::Log::AbstractLogProvider::LogLevel::Info)
+ 
+ #ifdef BUILD_TYPE_DEBUG
+ #define LogDebug(message) \
+ 	DPL_MACRO_FOR_LOGGING(message, CKM::Log::AbstractLogProvider::LogLevel::Debug)
+-#define LogInfo(message) \
+-	DPL_MACRO_FOR_LOGGING(message, CKM::Log::AbstractLogProvider::LogLevel::Info)
+ #define LogWarning(message) \
+ 	DPL_MACRO_FOR_LOGGING(message, CKM::Log::AbstractLogProvider::LogLevel::Warning)
+ #define LogPedantic(message) \
+@@ -181,8 +181,6 @@ typedef Singleton<LogSystem> LogSystemSingleton;
+ #else
+ #define LogDebug(message) \
+ 	DPL_MACRO_DUMMY_LOGGING(message, CKM::Log::AbstractLogProvider::LogLevel::Debug)
+-#define LogInfo(message) \
+-	DPL_MACRO_DUMMY_LOGGING(message, CKM::Log::AbstractLogProvider::LogLevel::Info)
+ #define LogWarning(message) \
+ 	DPL_MACRO_DUMMY_LOGGING(message, CKM::Log::AbstractLogProvider::LogLevel::Warning)
+ #define LogPedantic(message) \
+diff --git a/src/manager/dpl/log/src/log.cpp b/src/manager/dpl/log/src/log.cpp
+index 07d1e10..c33ff45 100644
+--- a/src/manager/dpl/log/src/log.cpp
++++ b/src/manager/dpl/log/src/log.cpp
+@@ -124,7 +124,7 @@ void LogSystem::SetLogLevel(const std::string& level)
+ #ifndef BUILD_TYPE_DEBUG
+ 
+ 	if (m_level > AbstractLogProvider::LogLevel::Error)
+-		m_level = AbstractLogProvider::LogLevel::Error;
++		m_level = AbstractLogProvider::LogLevel::Info;
+ 
+ #endif // BUILD_TYPE_DEBUG
+ }
+diff --git a/src/manager/service/ckm-service.cpp b/src/manager/service/ckm-service.cpp
+index 396270a..bd8949d 100644
+--- a/src/manager/service/ckm-service.cpp
++++ b/src/manager/service/ckm-service.cpp
+@@ -115,7 +115,7 @@ bool CKMService::ProcessOne(
+ 	ConnectionInfo &info,
+ 	bool allowed)
+ {
+-	LogDebug("process One");
++	LogInfo("process One");
+ 	RawBuffer response;
+ 
+ 	try {
+@@ -162,7 +162,7 @@ RawBuffer CKMService::ProcessControl(MessageBuffer &buffer, bool allowed)
+ 
+ 	buffer.Deserialize(command);
+ 
+-	LogDebug("Process control. Command: " << static_cast<int>(command));
++	LogInfo("Process control. Command: " << static_cast<int>(command));
+ 
+ 	std::function<RawBuffer(void)> logicFunc;
+ 
+@@ -257,7 +257,7 @@ RawBuffer CKMService::ProcessStorage(Credentials &cred, MessageBuffer &buffer)
+ 
+ 	DeserializeCommand(cred, buffer, command, msgId);
+ 
+-	LogDebug("Process storage. Command: " << static_cast<int>(command));
++	LogInfo("Process storage. Command: " << static_cast<int>(command));
+ 
+ 	switch (command) {
+ 	case LogicCommand::SAVE: {
+@@ -570,7 +570,7 @@ RawBuffer CKMService::ProcessExtended(Credentials &cred, MessageBuffer &buffer,
+ 
+ 	DeserializeCommand(cred, buffer, command, msgId);
+ 
+-	LogDebug("Process extended. Command: " << static_cast<int>(command));
++	LogInfo("Process extended. Command: " << static_cast<int>(command));
+ 
+ 	std::function<RawBuffer(void)> logicFunc;
+ 
